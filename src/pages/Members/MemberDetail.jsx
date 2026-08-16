@@ -57,6 +57,18 @@ export function MemberDetail() {
               <span className="muted"><Icon name="church" size={14} /> Assembly</span>
               <span>{member.preferred_assembly || "—"}</span>
             </div>
+            {member.date_of_birth && (
+              <div className="row between" style={{ padding: "8px 0" }}>
+                <span className="muted"><Icon name="sparkle" size={14} /> Date of birth</span>
+                <span>{new Date(member.date_of_birth).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}</span>
+              </div>
+            )}
+            {member.visiting_from && (
+              <div className="row between" style={{ padding: "8px 0" }}>
+                <span className="muted"><Icon name="pin" size={14} /> Visiting from</span>
+                <span>{member.visiting_from}</span>
+              </div>
+            )}
           </div>
         </div>
 
