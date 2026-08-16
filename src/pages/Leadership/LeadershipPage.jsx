@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Icon } from "../../components/Icon.jsx";
 import { useAuth } from "../../lib/auth.jsx";
 import { accessLevel } from "../../lib/rbac.js";
+import { groupByAssembly } from "../../lib/assembly.js";
 import { usePresbyters, useMinistryLeadership, useCreatePresbyter, useCreateMinistryLeader } from "../../hooks/useLeadership.js";
 import { useMinistries } from "../../hooks/useMinistries.js";
 
@@ -14,13 +15,16 @@ export function LeadershipPage() {
   const [addingPresbyter, setAddingPresbyter] = useState(false);
   const [addingLeader, setAddingLeader] = useState(false);
 
+  const presbyterSections = groupByAssembly(presbyters);
+  const leadershipSections = groupByAssembly(leadership, (l) => l.ministries?.assembly ?? null);
+
   return (
     <div className="fade-in">
       <div className="page-header">
         <div>
           <div className="eyebrow" style={{ marginBottom: 6 }}>Directory</div>
           <h1>Leadership</h1>
-          <p>Presbyters and ministry leadership across the church.</p>
+          <p>Presbyters and ministry leadership, by service.</p>
         </div>
       </div>
 
@@ -31,13 +35,18 @@ export function LeadershipPage() {
             {canManage && <button className="btn btn-ghost" onClick={() => setAddingPresbyter(true)}><Icon name="plus" size={14} /> Add</button>}
           </div>
           {presbytersLoading && <p className="muted">Loading…</p>}
-          {(presbyters ?? []).map((p) => (
-            <div key={p.id} className="row between" style={{ padding: "10px 0", borderTop: "1px solid var(--line-2)" }}>
-              <span style={{ fontWeight: 500, fontSize: 14 }}>{p.name}</span>
-              <span className="muted mono" style={{ fontSize: 12.5 }}>{p.contact || "—"}</span>
+          {presbyterSections.map((section) => (
+            <div key={section.label} style={{ marginBottom: 10 }}>
+              <div className="eyebrow" style={{ marginTop: 8 }}>{section.label}</div>
+              {section.items.map((p) => (
+                <div key={p.id} className="row between" style={{ padding: "10px 0", borderTop: "1px solid var(--line-2)" }}>
+                  <span style={{ fontWeight: 500, fontSize: 14 }}>{p.name}</span>
+                  <span className="muted mono" style={{ fontSize: 12.5 }}>{p.contact || "—"}</span>
+                </div>
+              ))}
             </div>
           ))}
-          {!presbytersLoading && (presbyters ?? []).length === 0 && <p className="muted" style={{ fontSize: 13 }}>None recorded yet.</p>}
+          {!presbytersLoading && presbyterSections.length === 0 && <p className="muted" style={{ fontSize: 13 }}>None recorded yet.</p>}
         </div>
 
         <div className="glass card">
@@ -46,16 +55,21 @@ export function LeadershipPage() {
             {canManage && <button className="btn btn-ghost" onClick={() => setAddingLeader(true)}><Icon name="plus" size={14} /> Add</button>}
           </div>
           {leadershipLoading && <p className="muted">Loading…</p>}
-          {(leadership ?? []).map((l) => (
-            <div key={l.id} className="row between" style={{ padding: "10px 0", borderTop: "1px solid var(--line-2)" }}>
-              <div>
-                <div style={{ fontWeight: 500, fontSize: 14 }}>{l.leader_name}</div>
-                <div className="faint" style={{ fontSize: 11.5 }}>{l.ministries?.name} · {l.portfolio}</div>
-              </div>
-              <span className="muted mono" style={{ fontSize: 12.5 }}>{l.contact || "—"}</span>
+          {leadershipSections.map((section) => (
+            <div key={section.label} style={{ marginBottom: 10 }}>
+              <div className="eyebrow" style={{ marginTop: 8 }}>{section.label}</div>
+              {section.items.map((l) => (
+                <div key={l.id} className="row between" style={{ padding: "10px 0", borderTop: "1px solid var(--line-2)" }}>
+                  <div>
+                    <div style={{ fontWeight: 500, fontSize: 14 }}>{l.leader_name}</div>
+                    <div className="faint" style={{ fontSize: 11.5 }}>{l.ministries?.name} · {l.portfolio}</div>
+                  </div>
+                  <span className="muted mono" style={{ fontSize: 12.5 }}>{l.contact || "—"}</span>
+                </div>
+              ))}
             </div>
           ))}
-          {!leadershipLoading && (leadership ?? []).length === 0 && <p className="muted" style={{ fontSize: 13 }}>None recorded yet.</p>}
+          {!leadershipLoading && leadershipSections.length === 0 && <p className="muted" style={{ fontSize: 13 }}>None recorded yet.</p>}
         </div>
       </div>
 
@@ -80,7 +94,7 @@ function ModalShell({ title, onClose, children }) {
 }
 
 function AddPresbyterModal({ onClose }) {
-  const [form, setForm] = useState({ name: "", contact: "" });
+  const [form, setForm] = useState({ name: "", contact: "", assembly: "English" });
   const [error, setError] = useState(null);
   const create = useCreatePresbyter();
 
@@ -99,6 +113,14 @@ function AddPresbyterModal({ onClose }) {
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <div className="field"><label>Name</label><input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
         <div className="field"><label>Contact</label><input className="input" value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} /></div>
+        <div className="field">
+          <label>Service</label>
+          <select className="select" value={form.assembly} onChange={(e) => setForm({ ...form, assembly: e.target.value })}>
+            <option value="English">English Service</option>
+            <option value="Twi">Twi Service</option>
+            <option value="Both">Both Services</option>
+          </select>
+        </div>
       </div>
       {error && <div className="badge badge-red" style={{ display: "block", marginTop: 14, padding: "8px 12px" }}>{error}</div>}
       <div className="row" style={{ gap: 8, marginTop: 20, justifyContent: "flex-end" }}>
@@ -132,7 +154,9 @@ function AddMinistryLeaderModal({ onClose }) {
           <label>Ministry</label>
           <select className="select" value={form.ministry_id} onChange={(e) => setForm({ ...form, ministry_id: e.target.value })}>
             <option value="">Select a ministry…</option>
-            {(ministries ?? []).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+            {(ministries ?? []).map((m) => (
+              <option key={m.id} value={m.id}>{m.name}{m.assembly ? ` (${m.assembly})` : ""}</option>
+            ))}
           </select>
         </div>
         <div className="field"><label>Leader name</label><input className="input" value={form.leader_name} onChange={(e) => setForm({ ...form, leader_name: e.target.value })} /></div>

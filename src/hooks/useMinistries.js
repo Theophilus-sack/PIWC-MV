@@ -12,6 +12,20 @@ export function useMinistries() {
   });
 }
 
+// Super Admin only (matches ministries_write RLS) — creating the ministry
+// entity itself, not joining one's roster.
+export function useCreateMinistry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ name, assembly }) => {
+      const { data, error } = await supabase.from("ministries").insert({ name, assembly }).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["ministries"] }),
+  });
+}
+
 // Members belonging to one ministry — used by Groups/Ministries (roster)
 // and by the Ministry Leader's scoped views.
 export function useMinistryRoster(ministryId) {

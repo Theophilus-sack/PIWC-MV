@@ -77,7 +77,7 @@ export function AttendancePage() {
         {canPickScope && (
           <select className="select" style={{ width: 200 }} value={scopeMinistryId} onChange={(e) => { setScopeMinistryId(e.target.value); setSelectedServiceId(null); }}>
             <option value="">General (Sunday service)</option>
-            {(ministries ?? []).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+            {(ministries ?? []).map((m) => <option key={m.id} value={m.id}>{m.name}{m.assembly ? ` (${m.assembly})` : ""}</option>)}
           </select>
         )}
       </div>

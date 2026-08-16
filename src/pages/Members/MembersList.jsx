@@ -63,7 +63,7 @@ export function MembersList() {
           </div>
           <select className="select" style={{ width: 190, height: 40 }} value={ministryId} onChange={(e) => onMinistryChange(e.target.value)}>
             <option value="">All ministries</option>
-            {(ministries ?? []).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+            {(ministries ?? []).map((m) => <option key={m.id} value={m.id}>{m.name}{m.assembly ? ` (${m.assembly})` : ""}</option>)}
           </select>
           <select className="select" style={{ width: 190, height: 40 }} value={sort} onChange={(e) => onSortChange(e.target.value)}>
             <option value="recent">Sort · Recently joined</option>

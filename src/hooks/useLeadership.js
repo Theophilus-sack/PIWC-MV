@@ -40,7 +40,7 @@ export function useMinistryLeadership() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("ministry_leadership")
-        .select("*, ministries(name)")
+        .select("*, ministries(name, assembly)")
         .order("leader_name");
       if (error) throw error;
       return data ?? [];

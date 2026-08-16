@@ -114,7 +114,7 @@ export function AddMemberModal({ onClose }) {
             <label>Ministry <span className="faint">(optional)</span></label>
             <select className="select" value={form.ministry_id} onChange={(e) => set({ ministry_id: e.target.value })}>
               <option value="">— None —</option>
-              {(ministries ?? []).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+              {(ministries ?? []).map((m) => <option key={m.id} value={m.id}>{m.name}{m.assembly ? ` (${m.assembly})` : ""}</option>)}
             </select>
           </div>
 
