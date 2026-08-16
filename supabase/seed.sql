@@ -12,7 +12,7 @@
 insert into ministries (name) values
   ('Choir'), ('Ushering'), ('Media'), ('Children'), ('Youth'),
   ('Evangelism'), ('Hospitality'), ('Prayer')
-on conflict (name) do nothing;
+on conflict (name, assembly) do nothing;
 
 insert into presbyters (name, contact) values
   ('Presbyter Kwabena Owusu', '+233 24 111 2222'),
