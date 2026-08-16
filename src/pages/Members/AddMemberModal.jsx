@@ -1,44 +1,45 @@
 import React, { useState } from "react";
 import { Icon } from "../../components/Icon.jsx";
-import { Switch } from "../../components/primitives.jsx";
+import { Switch, Checkbox } from "../../components/primitives.jsx";
 import { useCreateMember } from "../../hooks/useMembers.js";
-import { useMinistries, useAddMinistryMember } from "../../hooks/useMinistries.js";
+import { useMinistries, useAddMinistryMemberships } from "../../hooks/useMinistries.js";
+import { groupByAssembly } from "../../lib/assembly.js";
 
 const emptyForm = {
   name: "", contact: "", gender: "Female", residence: "",
   preferred_assembly: "English", date_of_birth: "",
   date_joined: new Date().toISOString().slice(0, 10),
-  ministry_id: "",
 };
 
 // Ported from the original screens.jsx AddMemberModal, extended per
-// feedback from the first real add-member pass: date of birth, an
-// optional ministry to join at creation, and a two-step first-timer flow
-// (Is this a first-timer? -> if yes, Stay or Visit + where they're
-// visiting from) instead of one flat status dropdown. The modal card now
-// caps its own height and scrolls internally — the fixed-overlay
-// centering was fine, but a form this size on a shorter window had no way
-// to reach the fields below the fold.
+// feedback from the first real add-member pass: date of birth, a
+// two-step first-timer flow (Is this a first-timer? -> if yes, Stay or
+// Visit + where they're visiting from) instead of one flat status
+// dropdown, and — a member can belong to more than one ministry, so this
+// is a checkbox multi-select grouped by service, not a single dropdown.
+// The modal card caps its own height and scrolls internally.
 export function AddMemberModal({ onClose }) {
   const [form, setForm] = useState(emptyForm);
   const [isFirstTimer, setIsFirstTimer] = useState(true);
   const [intent, setIntent] = useState(""); // "stay" | "visit", only when isFirstTimer
+  const [ministryIds, setMinistryIds] = useState([]);
   const [error, setError] = useState(null);
 
   const { data: ministries } = useMinistries();
+  const ministrySections = groupByAssembly(ministries);
   const createMember = useCreateMember();
-  const addMinistryMember = useAddMinistryMember();
+  const addMinistryMemberships = useAddMinistryMemberships();
 
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
+  const toggleMinistry = (id) => setMinistryIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
 
   const onSave = async () => {
     setError(null);
     if (!form.name.trim()) return setError("Name is required.");
     if (isFirstTimer && !intent) return setError("Choose whether this first-timer is expected to stay or was a one-off visit.");
 
-    const { ministry_id, ...memberFields } = form;
     const payload = {
-      ...memberFields,
+      ...form,
       status: isFirstTimer ? intent : "stay",
       visiting_from: isFirstTimer ? form.visiting_from || null : null,
       date_of_birth: form.date_of_birth || null,
@@ -46,8 +47,8 @@ export function AddMemberModal({ onClose }) {
 
     try {
       const created = await createMember.mutateAsync(payload);
-      if (ministry_id) {
-        await addMinistryMember.mutateAsync({ ministryId: ministry_id, memberId: created.id });
+      if (ministryIds.length) {
+        await addMinistryMemberships.mutateAsync({ memberId: created.id, ministryIds });
       }
       onClose();
     } catch (err) {
@@ -111,11 +112,21 @@ export function AddMemberModal({ onClose }) {
           </div>
 
           <div className="field">
-            <label>Ministry <span className="faint">(optional)</span></label>
-            <select className="select" value={form.ministry_id} onChange={(e) => set({ ministry_id: e.target.value })}>
-              <option value="">— None —</option>
-              {(ministries ?? []).map((m) => <option key={m.id} value={m.id}>{m.name}{m.assembly ? ` (${m.assembly})` : ""}</option>)}
-            </select>
+            <label>Ministries <span className="faint">(optional, can pick more than one)</span></label>
+            <div className="glass-soft" style={{ padding: 12, display: "flex", flexDirection: "column", gap: 4, maxHeight: 180, overflowY: "auto" }}>
+              {ministrySections.map((section) => (
+                <div key={section.label}>
+                  <div className="eyebrow" style={{ margin: "6px 0 2px" }}>{section.label}</div>
+                  {section.items.map((m) => (
+                    <label key={m.id} className="row" style={{ gap: 8, padding: "4px 0", cursor: "pointer" }}>
+                      <Checkbox checked={ministryIds.includes(m.id)} onChange={() => toggleMinistry(m.id)} />
+                      <span style={{ fontSize: 13.5 }}>{m.name}</span>
+                    </label>
+                  ))}
+                </div>
+              ))}
+              {ministrySections.length === 0 && <p className="muted" style={{ fontSize: 13 }}>No ministries yet.</p>}
+            </div>
           </div>
 
           <div className="divider" style={{ margin: "4px 0" }} />
@@ -150,7 +161,7 @@ export function AddMemberModal({ onClose }) {
 
         <div className="row" style={{ gap: 8, marginTop: 20, justifyContent: "flex-end" }}>
           <button className="btn" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={onSave} disabled={createMember.isPending || addMinistryMember.isPending}>
+          <button className="btn btn-primary" onClick={onSave} disabled={createMember.isPending || addMinistryMemberships.isPending}>
             <Icon name="check" size={14} stroke={2.4} /> {createMember.isPending ? "Saving…" : "Save member"}
           </button>
         </div>

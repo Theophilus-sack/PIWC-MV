@@ -10,9 +10,9 @@ const SORTS = {
 // screen loaded the whole array into a useState and filtered client-side,
 // which doesn't hold up at the workbook's real scale (~2000 rows). Every
 // filter here becomes a WHERE clause instead of an Array.filter.
-export function useMembers({ page = 0, pageSize = 20, search = "", ministryId = "", sort = "recent" } = {}) {
+export function useMembers({ page = 0, pageSize = 20, search = "", ministryId = "", assembly = "", sort = "recent" } = {}) {
   return useQuery({
-    queryKey: ["members", { page, pageSize, search, ministryId, sort }],
+    queryKey: ["members", { page, pageSize, search, ministryId, assembly, sort }],
     queryFn: async () => {
       let query = supabase
         .from("members")
@@ -23,6 +23,9 @@ export function useMembers({ page = 0, pageSize = 20, search = "", ministryId = 
       }
       if (ministryId) {
         query = query.eq("ministry_members.ministry_id", ministryId);
+      }
+      if (assembly) {
+        query = query.eq("preferred_assembly", assembly);
       }
 
       const { column, ascending } = SORTS[sort] ?? SORTS.recent;

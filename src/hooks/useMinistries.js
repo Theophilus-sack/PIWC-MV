@@ -90,6 +90,29 @@ export function useAddMinistryMember() {
   });
 }
 
+// Join a member to several ministries at once — used by Add Member's
+// multi-ministry picker. ministry_members has no cap on how many
+// ministries a member belongs to (it's a plain many-to-many join table),
+// so this was always possible at the data layer; only the old
+// single-select UI restricted it to one.
+export function useAddMinistryMemberships() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ memberId, ministryIds }) => {
+      if (!ministryIds.length) return;
+      const { error } = await supabase
+        .from("ministry_members")
+        .insert(ministryIds.map((ministryId) => ({ ministry_id: ministryId, member_id: memberId })));
+      if (error) throw error;
+    },
+    onSuccess: (_data, { ministryIds }) => {
+      for (const ministryId of ministryIds) {
+        queryClient.invalidateQueries({ queryKey: ["ministry-roster", ministryId] });
+      }
+    },
+  });
+}
+
 export function useRemoveMinistryMember() {
   const queryClient = useQueryClient();
   return useMutation({

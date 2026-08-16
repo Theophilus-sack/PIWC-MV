@@ -20,13 +20,14 @@ export function MembersList() {
   const navigate = useNavigate();
   const [q, setQ] = useState("");
   const [ministryId, setMinistryId] = useState("");
+  const [assembly, setAssembly] = useState("");
   const [sort, setSort] = useState("recent");
   const [page, setPage] = useState(0);
   const [showAdd, setShowAdd] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
 
   const { data: ministries } = useMinistries();
-  const { data, isLoading, isError, error } = useMembers({ page, pageSize: PAGE_SIZE, search: q, ministryId, sort });
+  const { data, isLoading, isError, error } = useMembers({ page, pageSize: PAGE_SIZE, search: q, ministryId, assembly, sort });
   const deleteMember = useDeleteMember();
 
   const access = accessLevel(role, "members");
@@ -40,6 +41,7 @@ export function MembersList() {
 
   const onSearchChange = (v) => { setQ(v); setPage(0); };
   const onMinistryChange = (v) => { setMinistryId(v); setPage(0); };
+  const onAssemblyChange = (v) => { setAssembly(v); setPage(0); };
   const onSortChange = (v) => { setSort(v); setPage(0); };
 
   return (
@@ -67,6 +69,11 @@ export function MembersList() {
           <select className="select" style={{ width: 190, height: 40 }} value={ministryId} onChange={(e) => onMinistryChange(e.target.value)}>
             <option value="">All ministries</option>
             {(ministries ?? []).map((m) => <option key={m.id} value={m.id}>{m.name}{m.assembly ? ` (${m.assembly})` : ""}</option>)}
+          </select>
+          <select className="select" style={{ width: 170, height: 40 }} value={assembly} onChange={(e) => onAssemblyChange(e.target.value)}>
+            <option value="">All services</option>
+            <option value="English">English Service</option>
+            <option value="Twi">Twi Service</option>
           </select>
           <select className="select" style={{ width: 190, height: 40 }} value={sort} onChange={(e) => onSortChange(e.target.value)}>
             <option value="recent">Sort · Recently joined</option>
