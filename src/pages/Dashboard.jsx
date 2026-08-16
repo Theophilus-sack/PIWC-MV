@@ -1,11 +1,11 @@
 import React from "react";
 import { Icon } from "../components/Icon.jsx";
 import { useAuth } from "../lib/auth.jsx";
+import { useMemberStats } from "../hooks/useMembers.js";
+import { useLastServiceAttendance } from "../hooks/useAttendance.js";
 
-// Phase 1 shell only — layout/structure ported from screens.jsx's Dashboard,
-// but stat cards are empty-state placeholders rather than fake generated
-// numbers. Real queries (members count, last service attendance, etc.)
-// land in Phase 2 once the members/attendance tables exist.
+// Members/Attendance stats are now real (Phase 2); Finance ("this month's
+// giving") stays an empty-state placeholder until Phase 3 wires it up.
 //
 // The Pastor's dashboard is intentionally a distinct branch, not a
 // relabeled default — per spec it surfaces reports routed to him and a
@@ -24,10 +24,10 @@ export function Dashboard() {
         <div>
           <div className="eyebrow" style={{ marginBottom: 6 }}>Overview</div>
           <h1>Akwaaba, {firstName}.</h1>
-          <p>Your workspace stats will appear here once data is connected.</p>
+          <p>Here's a quick look at the family this week.</p>
         </div>
       </div>
-      <EmptyStatGrid />
+      <StatGrid />
     </div>
   );
 }
@@ -42,7 +42,7 @@ function PastorDashboard({ firstName }) {
           <p>Reports routed to you and your Word Prep space.</p>
         </div>
       </div>
-      <EmptyStatGrid />
+      <StatGrid />
       <div className="grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 14 }}>
         <div className="glass card">
           <div className="eyebrow">Routed to you</div>
@@ -59,24 +59,50 @@ function PastorDashboard({ firstName }) {
   );
 }
 
-function EmptyStatGrid() {
-  const cards = [
-    { label: "Total members", icon: "members" },
-    { label: "Last service attendance", icon: "attendance" },
-    { label: "This month's giving", icon: "reports" },
-    { label: "New members", icon: "sparkle" },
-  ];
+function StatGrid() {
+  const { data: memberStats, isLoading: membersLoading } = useMemberStats();
+  const { data: lastService, isLoading: attendanceLoading } = useLastServiceAttendance();
+
   return (
     <div className="grid cols-4">
-      {cards.map((c) => (
-        <div className="glass stat-card" key={c.label}>
-          <div className="label">{c.label}</div>
-          <div className="value" style={{ color: "var(--ink-4)" }}>—</div>
-          <div className="muted" style={{ fontSize: 12, marginTop: 10, display: "flex", alignItems: "center", gap: 6 }}>
-            <Icon name={c.icon} size={13} /> Connect data source
-          </div>
+      <div className="glass stat-card">
+        <div className="deco" style={{ background: "var(--blue-500)" }} />
+        <div className="label">Total members</div>
+        <div className="value">{membersLoading ? "—" : memberStats?.total ?? 0}</div>
+        <div className="delta up"><Icon name="arrowUp" size={12} /> +{membersLoading ? "…" : memberStats?.newThisMonth ?? 0} this month</div>
+      </div>
+
+      <div className="glass stat-card">
+        <div className="deco" style={{ background: "var(--gold-500)" }} />
+        <div className="label">Last service attendance</div>
+        <div className="value">{attendanceLoading ? "—" : lastService?.count ?? "—"}</div>
+        <div className={"delta " + (lastService?.delta >= 0 ? "up" : "down")}>
+          {lastService ? (
+            <>
+              <Icon name={lastService.delta >= 0 ? "arrowUp" : "arrowDown"} size={12} />
+              {lastService.delta == null ? "First recorded service" : `${lastService.delta >= 0 ? "+" : ""}${lastService.delta} vs prev.`}
+            </>
+          ) : (
+            <span className="muted">No service logged yet</span>
+          )}
         </div>
-      ))}
+      </div>
+
+      <div className="glass stat-card">
+        <div className="deco" style={{ background: "var(--blue-700)" }} />
+        <div className="label">This month's giving</div>
+        <div className="value" style={{ color: "var(--ink-4)" }}>—</div>
+        <div className="muted" style={{ fontSize: 12, marginTop: 10, display: "flex", alignItems: "center", gap: 6 }}>
+          <Icon name="reports" size={13} /> Lands in Phase 3
+        </div>
+      </div>
+
+      <div className="glass stat-card">
+        <div className="deco" style={{ background: "var(--gold-400)" }} />
+        <div className="label">New members</div>
+        <div className="value">{membersLoading ? "—" : memberStats?.newThisMonth ?? 0}</div>
+        <div className="delta up"><Icon name="sparkle" size={12} /> Welcomed this month</div>
+      </div>
     </div>
   );
 }
