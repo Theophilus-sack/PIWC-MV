@@ -29,27 +29,27 @@ export function Sidebar() {
         </div>
       </div>
 
-      <div className="nav-section">Workspace</div>
-      {items.map((n) => (
-        <NavLink
-          key={n.key}
-          to={n.path}
-          end={n.path === "/"}
-          className={({ isActive }) => "nav-item" + (isActive ? " active" : "")}
-        >
-          <Icon name={n.icon} size={17} />
-          <span>{n.label}</span>
+      <div className="sidebar-nav-scroll">
+        <div className="nav-section">Workspace</div>
+        {items.map((n) => (
+          <NavLink
+            key={n.key}
+            to={n.path}
+            end={n.path === "/"}
+            className={({ isActive }) => "nav-item" + (isActive ? " active" : "")}
+          >
+            <Icon name={n.icon} size={17} />
+            <span>{n.label}</span>
+          </NavLink>
+        ))}
+
+        <div className="nav-section">System</div>
+        <NavLink to="/settings" className={({ isActive }) => "nav-item" + (isActive ? " active" : "")}>
+          <Icon name="settings" size={17} /><span>Settings</span>
         </NavLink>
-      ))}
+      </div>
 
-      <div className="nav-section">System</div>
-      <NavLink to="/settings" className={({ isActive }) => "nav-item" + (isActive ? " active" : "")}>
-        <Icon name="settings" size={17} /><span>Settings</span>
-      </NavLink>
-
-      <div style={{ flex: 1 }} />
-
-      <div className="glass-soft" style={{ padding: 12, marginBottom: 8 }}>
+      <div className="glass-soft" style={{ padding: 12, marginBottom: 8, flexShrink: 0 }}>
         <div className="row" style={{ gap: 10 }}>
           <Avatar initials={initialsOf(profile?.full_name)} size={36} />
           <div style={{ flex: 1, minWidth: 0 }}>

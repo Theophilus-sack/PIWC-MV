@@ -212,7 +212,18 @@ h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.02em; }
   margin: 16px 0 16px 16px; padding: 18px 14px;
   display: flex; flex-direction: column; gap: 4px;
   border-radius: var(--radius-lg);
+  min-height: 0; /* let the flex child below actually shrink+scroll instead of overflowing the aside */
 }
+/* Nav list scrolls on its own; brand (top) and the role/sign-out card
+   (bottom) stay pinned in view regardless of how many modules are in
+   the nav — this became necessary once nav grew past ~5 items. */
+.sidebar-nav-scroll {
+  flex: 1; min-height: 0; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 4px;
+  scrollbar-width: thin; scrollbar-color: var(--line) transparent;
+}
+.sidebar-nav-scroll::-webkit-scrollbar { width: 6px; }
+.sidebar-nav-scroll::-webkit-scrollbar-thumb { background: var(--line); border-radius: 8px; }
 .brand {
   display: flex; align-items: center; gap: 10px;
   padding: 6px 8px 18px;
