@@ -51,11 +51,15 @@ create trigger on_auth_user_created
 
 -- ============== RLS HELPERS ==============
 -- security definer + owned by the migration role (table owner) so these
--- reads bypass RLS internally — without this, current_role() querying
+-- reads bypass RLS internally — without this, current_app_role() querying
 -- profiles would itself be subject to the profiles RLS policies below,
--- which reference current_role(), which would recurse.
+-- which reference current_app_role(), which would recurse.
+--
+-- Named current_app_role (not current_role) because CURRENT_ROLE is a
+-- reserved SQL keyword (like CURRENT_USER) — `create function current_role()`
+-- is a syntax error, the parser reads it as the keyword, not an identifier.
 
-create function current_role() returns app_role
+create function current_app_role() returns app_role
 language sql stable security definer as $$
   select role from profiles where id = auth.uid()
 $$;
@@ -124,24 +128,24 @@ alter table audit_logs enable row level security;
 create policy ministries_select on ministries for select
   using (auth.uid() is not null);
 create policy ministries_write on ministries for all
-  using (current_role() in ('super_admin', 'pastor'))
-  with check (current_role() in ('super_admin', 'pastor'));
+  using (current_app_role() in ('super_admin', 'pastor'))
+  with check (current_app_role() in ('super_admin', 'pastor'));
 
 -- Profiles: everyone can read their own row (the app needs this to know
 -- its own role); Super Admin/Pastor can read and manage everyone's.
 create policy profiles_select_self on profiles for select
   using (id = auth.uid());
 create policy profiles_select_admins on profiles for select
-  using (current_role() in ('super_admin', 'pastor'));
+  using (current_app_role() in ('super_admin', 'pastor'));
 create policy profiles_update_admins on profiles for update
-  using (current_role() in ('super_admin', 'pastor'));
+  using (current_app_role() in ('super_admin', 'pastor'));
 create policy profiles_insert_admins on profiles for insert
-  with check (current_role() in ('super_admin', 'pastor'));
+  with check (current_app_role() in ('super_admin', 'pastor'));
 
 -- Audit logs: read-only, Pastor/Super Admin only. No write policies at
 -- all — see log_audit_event() above.
 create policy audit_logs_select on audit_logs for select
-  using (current_role() in ('super_admin', 'pastor'));
+  using (current_app_role() in ('super_admin', 'pastor'));
 
 -- ============== SEED (fake/dev only — see supabase/seed.sql) ==============
 -- Real member/ministry data is never seeded here. supabase/seed.sql (added
