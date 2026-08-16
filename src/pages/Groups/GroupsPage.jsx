@@ -106,10 +106,7 @@ function AddToRosterModal({ ministryId, existingIds, onAdd, onClose }) {
   const candidates = (data?.rows ?? []).filter((m) => !existingIds.includes(m.id));
 
   return (
-    <div
-      style={{ position: "fixed", inset: 0, zIndex: 50, display: "grid", placeItems: "center", background: "color-mix(in srgb, var(--blue-900) 40%, transparent)", backdropFilter: "blur(8px)", padding: 24 }}
-      onClick={onClose}
-    >
+    <div className="modal-overlay" onClick={onClose}>
       <div className="glass" style={{ width: "100%", maxWidth: 440, padding: 26, maxHeight: "70vh", display: "flex", flexDirection: "column" }} onClick={(e) => e.stopPropagation()}>
         <div className="row between" style={{ marginBottom: 14 }}>
           <h2 style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 500 }}>Add to roster</h2>

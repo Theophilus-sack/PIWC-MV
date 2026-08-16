@@ -330,6 +330,26 @@ h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.02em; }
 .legend { display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
 .legend .swatch { width: 10px; height: 10px; border-radius: 3px; display: inline-block; margin-right: 8px; vertical-align: middle; }
 
+/* Modal — anchored near the top rather than vertically centered. A
+   perfectly-centered modal looks fine for short content, but pushes the
+   header disconcertingly low for a form with this many fields (Add
+   Member grew past what fits in one screen); anchoring near the top plus
+   letting the card scroll internally keeps the header where you expect
+   it regardless of form length. */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 50;
+  display: flex; align-items: flex-start; justify-content: center;
+  background: color-mix(in srgb, var(--blue-900) 40%, transparent);
+  backdrop-filter: blur(8px);
+  padding: 40px 24px;
+  overflow-y: auto;
+}
+.modal-card {
+  width: 100%;
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+}
+
 /* Switch */
 .switch { width: 38px; height: 22px; border-radius: 999px; background: var(--line); position: relative; cursor: pointer; transition: background .15s; flex-shrink: 0; }
 .switch::after { content: ""; width: 16px; height: 16px; border-radius: 50%; background: #fff; position: absolute; top: 3px; left: 3px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); transition: transform .2s ease; }

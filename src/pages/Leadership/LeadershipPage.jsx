@@ -67,11 +67,8 @@ export function LeadershipPage() {
 
 function ModalShell({ title, onClose, children }) {
   return (
-    <div
-      style={{ position: "fixed", inset: 0, zIndex: 50, display: "grid", placeItems: "center", background: "color-mix(in srgb, var(--blue-900) 40%, transparent)", backdropFilter: "blur(8px)", padding: 24 }}
-      onClick={onClose}
-    >
-      <div className="glass" style={{ width: "100%", maxWidth: 440, padding: 26, maxHeight: "90vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="glass modal-card" style={{ maxWidth: 440, padding: 26 }} onClick={(e) => e.stopPropagation()}>
         <div className="row between" style={{ marginBottom: 14 }}>
           <h2 style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 500 }}>{title}</h2>
           <button className="btn btn-icon btn-ghost" onClick={onClose}><Icon name="x" size={16} /></button>

@@ -56,17 +56,10 @@ export function AddMemberModal({ onClose }) {
   };
 
   return (
-    <div
-      style={{
-        position: "fixed", inset: 0, zIndex: 50, display: "grid", placeItems: "center",
-        background: "color-mix(in srgb, var(--blue-900) 40%, transparent)",
-        backdropFilter: "blur(8px)", padding: 24,
-      }}
-      onClick={onClose}
-    >
+    <div className="modal-overlay" onClick={onClose}>
       <div
-        className="glass"
-        style={{ width: "100%", maxWidth: 520, padding: 28, maxHeight: "90vh", overflowY: "auto" }}
+        className="glass modal-card"
+        style={{ maxWidth: 520, padding: 28 }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="row between" style={{ marginBottom: 14 }}>
