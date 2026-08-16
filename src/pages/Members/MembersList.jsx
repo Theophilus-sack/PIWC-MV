@@ -7,6 +7,7 @@ import { useMinistries } from "../../hooks/useMinistries.js";
 import { useAuth } from "../../lib/auth.jsx";
 import { accessLevel } from "../../lib/rbac.js";
 import { AddMemberModal } from "./AddMemberModal.jsx";
+import { EditMemberModal } from "./EditMemberModal.jsx";
 
 const PAGE_SIZE = 20;
 
@@ -22,6 +23,7 @@ export function MembersList() {
   const [sort, setSort] = useState("recent");
   const [page, setPage] = useState(0);
   const [showAdd, setShowAdd] = useState(false);
+  const [editingMember, setEditingMember] = useState(null);
 
   const { data: ministries } = useMinistries();
   const { data, isLoading, isError, error } = useMembers({ page, pageSize: PAGE_SIZE, search: q, ministryId, sort });
@@ -29,6 +31,7 @@ export function MembersList() {
 
   const access = accessLevel(role, "members");
   const canAdd = access === "full";
+  const canEdit = access === "full";
   const canDelete = role === "super_admin";
 
   const rows = data?.rows ?? [];
@@ -113,13 +116,20 @@ export function MembersList() {
                   <td><span className={"badge" + (m.status === "first-timer" ? " badge-gold" : "")}>{m.status}</span></td>
                   <td className="muted">{m.date_joined ? new Date(m.date_joined).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—"}</td>
                   <td onClick={(e) => e.stopPropagation()}>
-                    {canDelete && (
-                      <button className="btn btn-icon btn-ghost" onClick={() => {
-                        if (confirm(`Delete ${m.name}? This can't be undone.`)) deleteMember.mutate(m.id);
-                      }}>
-                        <Icon name="trash" size={14} />
-                      </button>
-                    )}
+                    <div className="row" style={{ gap: 4 }}>
+                      {canEdit && (
+                        <button className="btn btn-icon btn-ghost" onClick={() => setEditingMember(m)}>
+                          <Icon name="edit" size={14} />
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button className="btn btn-icon btn-ghost" onClick={() => {
+                          if (confirm(`Delete ${m.name}? This can't be undone.`)) deleteMember.mutate(m.id);
+                        }}>
+                          <Icon name="trash" size={14} />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -143,6 +153,7 @@ export function MembersList() {
       </div>
 
       {showAdd && <AddMemberModal onClose={() => setShowAdd(false)} />}
+      {editingMember && <EditMemberModal member={editingMember} onClose={() => setEditingMember(null)} />}
     </div>
   );
 }

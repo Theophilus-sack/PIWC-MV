@@ -26,6 +26,38 @@ export function useCreateMinistry() {
   });
 }
 
+// Super Admin only (ministries_write RLS) — renaming/re-categorising the
+// ministry entity itself.
+export function useUpdateMinistry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, name, assembly }) => {
+      const { error } = await supabase.from("ministries").update({ name, assembly }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["ministries"] }),
+  });
+}
+
+// Super Admin only. Cascades to ministry_members and ministry_leadership
+// (both FK ministry_id references ... on delete cascade) and nulls out
+// service_dates.ministry_id (that FK has no cascade, matching that a
+// past service's attendance record shouldn't vanish just because the
+// ministry that held it was later deleted).
+export function useDeleteMinistry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id) => {
+      const { error } = await supabase.from("ministries").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ministries"] });
+      queryClient.invalidateQueries({ queryKey: ["ministry-leadership"] });
+    },
+  });
+}
+
 // Members belonging to one ministry — used by Groups/Ministries (roster)
 // and by the Ministry Leader's scoped views.
 export function useMinistryRoster(ministryId) {

@@ -1,9 +1,12 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Icon } from "../../components/Icon.jsx";
 import { Avatar } from "../../components/primitives.jsx";
 import { useMember } from "../../hooks/useMembers.js";
 import { useMemberAttendance } from "../../hooks/useAttendance.js";
+import { useAuth } from "../../lib/auth.jsx";
+import { accessLevel } from "../../lib/rbac.js";
+import { EditMemberModal } from "./EditMemberModal.jsx";
 
 // Ported from the original screens.jsx MemberDetail — same card layout,
 // real data via useMember()/useMemberAttendance() instead of the fake
@@ -11,6 +14,9 @@ import { useMemberAttendance } from "../../hooks/useAttendance.js";
 export function MemberDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { role } = useAuth();
+  const canEdit = accessLevel(role, "members") === "full";
+  const [showEdit, setShowEdit] = useState(false);
   const { data: member, isLoading, isError, error } = useMember(id);
   const { data: attendance } = useMemberAttendance(id);
 
@@ -22,13 +28,18 @@ export function MemberDetail() {
 
   return (
     <div className="fade-in">
-      <div className="row" style={{ marginBottom: 14, gap: 8 }}>
-        <button className="btn btn-ghost" onClick={() => navigate("/members")}>
-          <span style={{ transform: "rotate(180deg)", display: "inline-flex" }}><Icon name="chevron" size={14} /></span>
-          Members
-        </button>
-        <span className="faint">/</span>
-        <span className="muted">{member.name}</span>
+      <div className="row between" style={{ marginBottom: 14, gap: 8 }}>
+        <div className="row" style={{ gap: 8 }}>
+          <button className="btn btn-ghost" onClick={() => navigate("/members")}>
+            <span style={{ transform: "rotate(180deg)", display: "inline-flex" }}><Icon name="chevron" size={14} /></span>
+            Members
+          </button>
+          <span className="faint">/</span>
+          <span className="muted">{member.name}</span>
+        </div>
+        {canEdit && (
+          <button className="btn" onClick={() => setShowEdit(true)}><Icon name="edit" size={14} /> Edit</button>
+        )}
       </div>
 
       <div className="grid" style={{ gridTemplateColumns: "1.1fr 2fr", gap: 14 }}>
@@ -98,6 +109,8 @@ export function MemberDetail() {
           </div>
         </div>
       </div>
+
+      {showEdit && <EditMemberModal member={member} onClose={() => setShowEdit(false)} />}
     </div>
   );
 }

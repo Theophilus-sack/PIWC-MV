@@ -4,7 +4,8 @@ import { Avatar } from "../../components/primitives.jsx";
 import { useAuth } from "../../lib/auth.jsx";
 import { accessLevel } from "../../lib/rbac.js";
 import {
-  useMinistries, useCreateMinistry, useMinistryRoster, useAddMinistryMember, useRemoveMinistryMember,
+  useMinistries, useCreateMinistry, useUpdateMinistry, useDeleteMinistry,
+  useMinistryRoster, useAddMinistryMember, useRemoveMinistryMember,
 } from "../../hooks/useMinistries.js";
 import { useMembers } from "../../hooks/useMembers.js";
 import { ASSEMBLY_SECTIONS, groupByAssembly } from "../../lib/assembly.js";
@@ -57,7 +58,11 @@ export function GroupsPage() {
         )}
 
         {activeMinistryId ? (
-          <Roster ministry={ministries?.find((m) => m.id === activeMinistryId)} role={role} />
+          <Roster
+            ministry={ministries?.find((m) => m.id === activeMinistryId)}
+            role={role}
+            onDeleted={() => setSelected(null)}
+          />
         ) : (
           <div className="glass card" style={{ padding: 40, textAlign: "center" }}>
             <p className="muted">Pick a ministry to see its roster.</p>
@@ -65,7 +70,7 @@ export function GroupsPage() {
         )}
       </div>
 
-      {showAddMinistry && <AddMinistryModal onClose={() => setShowAddMinistry(false)} />}
+      {showAddMinistry && <MinistryFormModal onClose={() => setShowAddMinistry(false)} />}
     </div>
   );
 }
@@ -76,15 +81,23 @@ function AssemblyBadge({ assembly }) {
   return <span className={"badge " + (section?.badgeClass ?? "")}>{assembly}</span>;
 }
 
-function Roster({ ministry, role }) {
+function Roster({ ministry, role, onDeleted }) {
   const access = accessLevel(role, "groups");
   const canManage = access === "full" || access === "own";
+  const canEditMinistry = role === "super_admin"; // matches ministries_write RLS
   const { data: roster, isLoading } = useMinistryRoster(ministry?.id);
   const addMember = useAddMinistryMember();
   const removeMember = useRemoveMinistryMember();
+  const deleteMinistry = useDeleteMinistry();
   const [showAdd, setShowAdd] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
 
   if (!ministry) return null;
+
+  const onDelete = () => {
+    if (!confirm(`Delete "${ministry.name}"? Its roster and leadership entries go with it — this can't be undone.`)) return;
+    deleteMinistry.mutate(ministry.id, { onSuccess: onDeleted });
+  };
 
   return (
     <div className="glass card">
@@ -93,8 +106,17 @@ function Roster({ ministry, role }) {
           <div className="eyebrow row" style={{ gap: 8 }}>Roster <AssemblyBadge assembly={ministry.assembly} /></div>
           <h3 style={{ fontSize: 18, marginTop: 4 }}>{ministry.name} · {(roster ?? []).length} members</h3>
         </div>
-        {canManage && <button className="btn btn-primary" onClick={() => setShowAdd(true)}><Icon name="plus" size={15} /> Add member</button>}
+        <div className="row" style={{ gap: 8 }}>
+          {canEditMinistry && (
+            <>
+              <button className="btn btn-icon btn-ghost" onClick={() => setShowEdit(true)}><Icon name="edit" size={14} /></button>
+              <button className="btn btn-icon btn-ghost" onClick={onDelete}><Icon name="trash" size={14} /></button>
+            </>
+          )}
+          {canManage && <button className="btn btn-primary" onClick={() => setShowAdd(true)}><Icon name="plus" size={15} /> Add member</button>}
+        </div>
       </div>
+      {showEdit && <MinistryFormModal ministry={ministry} onClose={() => setShowEdit(false)} />}
 
       {isLoading && <p className="muted">Loading…</p>}
       {(roster ?? []).map((r) => (
@@ -124,16 +146,23 @@ function Roster({ ministry, role }) {
   );
 }
 
-function AddMinistryModal({ onClose }) {
-  const [name, setName] = useState("");
-  const [assembly, setAssembly] = useState("English");
+// Handles both create (no `ministry` prop) and edit (`ministry` passed).
+function MinistryFormModal({ ministry, onClose }) {
+  const [name, setName] = useState(ministry?.name ?? "");
+  const [assembly, setAssembly] = useState(ministry?.assembly ?? "English");
   const [error, setError] = useState(null);
   const createMinistry = useCreateMinistry();
+  const updateMinistry = useUpdateMinistry();
+  const saving = createMinistry.isPending || updateMinistry.isPending;
 
   const onSave = async () => {
     if (!name.trim()) return setError("Name is required.");
     try {
-      await createMinistry.mutateAsync({ name: name.trim(), assembly });
+      if (ministry) {
+        await updateMinistry.mutateAsync({ id: ministry.id, name: name.trim(), assembly });
+      } else {
+        await createMinistry.mutateAsync({ name: name.trim(), assembly });
+      }
       onClose();
     } catch (err) {
       setError(err.message || "Couldn't save this ministry.");
@@ -144,7 +173,7 @@ function AddMinistryModal({ onClose }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="glass modal-card" style={{ maxWidth: 420, padding: 26 }} onClick={(e) => e.stopPropagation()}>
         <div className="row between" style={{ marginBottom: 14 }}>
-          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 500 }}>Add ministry</h2>
+          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 500 }}>{ministry ? "Edit ministry" : "Add ministry"}</h2>
           <button className="btn btn-icon btn-ghost" onClick={onClose}><Icon name="x" size={16} /></button>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -164,7 +193,7 @@ function AddMinistryModal({ onClose }) {
         {error && <div className="badge badge-red" style={{ display: "block", marginTop: 14, padding: "8px 12px" }}>{error}</div>}
         <div className="row" style={{ gap: 8, marginTop: 20, justifyContent: "flex-end" }}>
           <button className="btn" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={onSave} disabled={createMinistry.isPending}>Save</button>
+          <button className="btn btn-primary" onClick={onSave} disabled={saving}>Save</button>
         </div>
       </div>
     </div>

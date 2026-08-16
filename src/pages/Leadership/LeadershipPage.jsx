@@ -3,7 +3,11 @@ import { Icon } from "../../components/Icon.jsx";
 import { useAuth } from "../../lib/auth.jsx";
 import { accessLevel } from "../../lib/rbac.js";
 import { groupByAssembly } from "../../lib/assembly.js";
-import { usePresbyters, useMinistryLeadership, useCreatePresbyter, useCreateMinistryLeader } from "../../hooks/useLeadership.js";
+import {
+  usePresbyters, useMinistryLeadership,
+  useCreatePresbyter, useUpdatePresbyter, useDeletePresbyter,
+  useCreateMinistryLeader, useUpdateMinistryLeader, useDeleteMinistryLeader,
+} from "../../hooks/useLeadership.js";
 import { useMinistries } from "../../hooks/useMinistries.js";
 
 export function LeadershipPage() {
@@ -13,7 +17,12 @@ export function LeadershipPage() {
   const { data: presbyters, isLoading: presbytersLoading } = usePresbyters();
   const { data: leadership, isLoading: leadershipLoading } = useMinistryLeadership();
   const [addingPresbyter, setAddingPresbyter] = useState(false);
+  const [editingPresbyter, setEditingPresbyter] = useState(null);
   const [addingLeader, setAddingLeader] = useState(false);
+  const [editingLeader, setEditingLeader] = useState(null);
+
+  const deletePresbyter = useDeletePresbyter();
+  const deleteLeader = useDeleteMinistryLeader();
 
   const presbyterSections = groupByAssembly(presbyters);
   const leadershipSections = groupByAssembly(leadership, (l) => l.ministries?.assembly ?? null);
@@ -41,7 +50,20 @@ export function LeadershipPage() {
               {section.items.map((p) => (
                 <div key={p.id} className="row between" style={{ padding: "10px 0", borderTop: "1px solid var(--line-2)" }}>
                   <span style={{ fontWeight: 500, fontSize: 14 }}>{p.name}</span>
-                  <span className="muted mono" style={{ fontSize: 12.5 }}>{p.contact || "—"}</span>
+                  <div className="row" style={{ gap: 8 }}>
+                    <span className="muted mono" style={{ fontSize: 12.5 }}>{p.contact || "—"}</span>
+                    {canManage && (
+                      <div className="row" style={{ gap: 2 }}>
+                        <button className="btn btn-icon btn-ghost" onClick={() => setEditingPresbyter(p)}><Icon name="edit" size={13} /></button>
+                        <button
+                          className="btn btn-icon btn-ghost"
+                          onClick={() => { if (confirm(`Remove ${p.name} from Presbyters?`)) deletePresbyter.mutate(p.id); }}
+                        >
+                          <Icon name="trash" size={13} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -64,7 +86,20 @@ export function LeadershipPage() {
                     <div style={{ fontWeight: 500, fontSize: 14 }}>{l.leader_name}</div>
                     <div className="faint" style={{ fontSize: 11.5 }}>{l.ministries?.name} · {l.portfolio}</div>
                   </div>
-                  <span className="muted mono" style={{ fontSize: 12.5 }}>{l.contact || "—"}</span>
+                  <div className="row" style={{ gap: 8 }}>
+                    <span className="muted mono" style={{ fontSize: 12.5 }}>{l.contact || "—"}</span>
+                    {canManage && (
+                      <div className="row" style={{ gap: 2 }}>
+                        <button className="btn btn-icon btn-ghost" onClick={() => setEditingLeader(l)}><Icon name="edit" size={13} /></button>
+                        <button
+                          className="btn btn-icon btn-ghost"
+                          onClick={() => { if (confirm(`Remove ${l.leader_name} from ${l.ministries?.name}'s leadership?`)) deleteLeader.mutate(l.id); }}
+                        >
+                          <Icon name="trash" size={13} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -73,8 +108,12 @@ export function LeadershipPage() {
         </div>
       </div>
 
-      {addingPresbyter && <AddPresbyterModal onClose={() => setAddingPresbyter(false)} />}
-      {addingLeader && <AddMinistryLeaderModal onClose={() => setAddingLeader(false)} />}
+      {(addingPresbyter || editingPresbyter) && (
+        <PresbyterModal presbyter={editingPresbyter} onClose={() => { setAddingPresbyter(false); setEditingPresbyter(null); }} />
+      )}
+      {(addingLeader || editingLeader) && (
+        <MinistryLeaderModal leader={editingLeader} onClose={() => { setAddingLeader(false); setEditingLeader(null); }} />
+      )}
     </div>
   );
 }
@@ -93,15 +132,21 @@ function ModalShell({ title, onClose, children }) {
   );
 }
 
-function AddPresbyterModal({ onClose }) {
-  const [form, setForm] = useState({ name: "", contact: "", assembly: "English" });
+// Handles both create (no `presbyter` prop) and edit.
+function PresbyterModal({ presbyter, onClose }) {
+  const [form, setForm] = useState({
+    name: presbyter?.name ?? "", contact: presbyter?.contact ?? "", assembly: presbyter?.assembly ?? "English",
+  });
   const [error, setError] = useState(null);
   const create = useCreatePresbyter();
+  const update = useUpdatePresbyter();
+  const saving = create.isPending || update.isPending;
 
   const onSave = async () => {
     if (!form.name.trim()) return setError("Name is required.");
     try {
-      await create.mutateAsync(form);
+      if (presbyter) await update.mutateAsync({ id: presbyter.id, ...form });
+      else await create.mutateAsync(form);
       onClose();
     } catch (err) {
       setError(err.message);
@@ -109,7 +154,7 @@ function AddPresbyterModal({ onClose }) {
   };
 
   return (
-    <ModalShell title="Add presbyter" onClose={onClose}>
+    <ModalShell title={presbyter ? "Edit presbyter" : "Add presbyter"} onClose={onClose}>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <div className="field"><label>Name</label><input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
         <div className="field"><label>Contact</label><input className="input" value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} /></div>
@@ -125,22 +170,29 @@ function AddPresbyterModal({ onClose }) {
       {error && <div className="badge badge-red" style={{ display: "block", marginTop: 14, padding: "8px 12px" }}>{error}</div>}
       <div className="row" style={{ gap: 8, marginTop: 20, justifyContent: "flex-end" }}>
         <button className="btn" onClick={onClose}>Cancel</button>
-        <button className="btn btn-primary" onClick={onSave} disabled={create.isPending}>Save</button>
+        <button className="btn btn-primary" onClick={onSave} disabled={saving}>Save</button>
       </div>
     </ModalShell>
   );
 }
 
-function AddMinistryLeaderModal({ onClose }) {
+// Handles both create (no `leader` prop) and edit.
+function MinistryLeaderModal({ leader, onClose }) {
   const { data: ministries } = useMinistries();
-  const [form, setForm] = useState({ ministry_id: "", leader_name: "", portfolio: "President", contact: "" });
+  const [form, setForm] = useState({
+    ministry_id: leader?.ministry_id ?? "", leader_name: leader?.leader_name ?? "",
+    portfolio: leader?.portfolio ?? "President", contact: leader?.contact ?? "",
+  });
   const [error, setError] = useState(null);
   const create = useCreateMinistryLeader();
+  const update = useUpdateMinistryLeader();
+  const saving = create.isPending || update.isPending;
 
   const onSave = async () => {
     if (!form.leader_name.trim() || !form.ministry_id) return setError("Ministry and name are required.");
     try {
-      await create.mutateAsync(form);
+      if (leader) await update.mutateAsync({ id: leader.id, ...form });
+      else await create.mutateAsync(form);
       onClose();
     } catch (err) {
       setError(err.message);
@@ -148,7 +200,7 @@ function AddMinistryLeaderModal({ onClose }) {
   };
 
   return (
-    <ModalShell title="Add ministry leader" onClose={onClose}>
+    <ModalShell title={leader ? "Edit ministry leader" : "Add ministry leader"} onClose={onClose}>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <div className="field">
           <label>Ministry</label>
@@ -166,7 +218,7 @@ function AddMinistryLeaderModal({ onClose }) {
       {error && <div className="badge badge-red" style={{ display: "block", marginTop: 14, padding: "8px 12px" }}>{error}</div>}
       <div className="row" style={{ gap: 8, marginTop: 20, justifyContent: "flex-end" }}>
         <button className="btn" onClick={onClose}>Cancel</button>
-        <button className="btn btn-primary" onClick={onSave} disabled={create.isPending}>Save</button>
+        <button className="btn btn-primary" onClick={onSave} disabled={saving}>Save</button>
       </div>
     </ModalShell>
   );

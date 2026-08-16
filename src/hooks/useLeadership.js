@@ -23,11 +23,55 @@ export function useCreatePresbyter() {
   });
 }
 
+export function useUpdatePresbyter() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...patch }) => {
+      const { error } = await supabase.from("presbyters").update(patch).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["presbyters"] }),
+  });
+}
+
+export function useDeletePresbyter() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id) => {
+      const { error } = await supabase.from("presbyters").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["presbyters"] }),
+  });
+}
+
 export function useCreateMinistryLeader() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (entry) => {
       const { error } = await supabase.from("ministry_leadership").insert(entry);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["ministry-leadership"] }),
+  });
+}
+
+export function useUpdateMinistryLeader() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...patch }) => {
+      const { error } = await supabase.from("ministry_leadership").update(patch).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["ministry-leadership"] }),
+  });
+}
+
+export function useDeleteMinistryLeader() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id) => {
+      const { error } = await supabase.from("ministry_leadership").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["ministry-leadership"] }),
