@@ -115,14 +115,14 @@ where sd.ministry_id is not null
 insert into net_tithes_performance (year, month, budget_ghs, actual_ghs)
 select extract(year from current_date)::int, m,
   6000 + (m * 150),
-  round((6000 + (m * 150)) * (0.85 + random() * 0.3), 2)
+  round(((6000 + (m * 150)) * (0.85 + random() * 0.3))::numeric, 2)
 from generate_series(1, 12) as m
 on conflict (year, month) do nothing;
 
 insert into missions_offering_performance (year, month, budget_ghs, actual_ghs)
 select extract(year from current_date)::int, m,
   1500 + (m * 40),
-  round((1500 + (m * 40)) * (0.8 + random() * 0.4), 2)
+  round(((1500 + (m * 40)) * (0.8 + random() * 0.4))::numeric, 2)
 from generate_series(1, 12) as m
 on conflict (year, month) do nothing;
 
