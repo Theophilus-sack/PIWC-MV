@@ -2,10 +2,10 @@ import React, { useEffect, useState } from "react";
 import { Icon } from "../../components/Icon.jsx";
 import { useAuth } from "../../lib/auth.jsx";
 import { accessLevel } from "../../lib/rbac.js";
-import { formatGHS, computeVariance, MONTH_NAMES } from "../../lib/finance.js";
+import { formatGHS, computeVariance, sumByAssembly, ASSEMBLIES, MONTH_NAMES } from "../../lib/finance.js";
 import {
-  useTithesPerformance, useUpsertTithesMonth,
-  useMissionsPerformance, useUpsertMissionsMonth,
+  useTithesYear, useUpsertTithesMonth,
+  useMissionsYear, useUpsertMissionsMonth,
   useDesignatedFunds, useCreateDesignatedFund, useUpdateDesignatedFund, useDeleteDesignatedFund,
   useDistrictAccounts, useCreateDistrictAccount, useDeleteDistrictAccount,
 } from "../../hooks/useFinance.js";
@@ -48,7 +48,7 @@ export function FinancePage() {
       {tab === "tithes" && (
         <MonthlyPerformanceSection
           title="Net tithes performance"
-          useList={useTithesPerformance}
+          useYearData={useTithesYear}
           useUpsert={useUpsertTithesMonth}
           canEdit={canEdit}
         />
@@ -56,7 +56,7 @@ export function FinancePage() {
       {tab === "missions" && (
         <MonthlyPerformanceSection
           title="Missions offering performance"
-          useList={useMissionsPerformance}
+          useYearData={useMissionsYear}
           useUpsert={useUpsertMissionsMonth}
           canEdit={canEdit}
         />
@@ -69,84 +69,175 @@ export function FinancePage() {
 
 // ============== Tithes / Missions Offering (identical shape) ==============
 
-function MonthlyPerformanceSection({ title, useList, useUpsert, canEdit }) {
+function MonthlyPerformanceSection({ title, useYearData, useUpsert, canEdit }) {
   const [year, setYear] = useState(new Date().getFullYear());
-  const { data, isLoading } = useList(year);
+  const [assembly, setAssembly] = useState("English");
+  const { data, isLoading } = useYearData(year); // both assemblies, 24 rows
   const upsert = useUpsert();
 
-  // Merge fetched rows onto a full Jan-Dec skeleton so months with no
-  // entry yet still render as an editable (empty) row instead of just
-  // vanishing from the table.
-  const byMonth = new Map((data ?? []).map((r) => [r.month, r]));
+  // Merge the selected assembly's fetched rows onto a full Jan-Dec
+  // skeleton so months with no entry yet still render as an editable
+  // (empty) row instead of just vanishing from the table.
+  const assemblyRows = (data ?? []).filter((r) => r.assembly === assembly);
+  const byMonth = new Map(assemblyRows.map((r) => [r.month, r]));
   const rows = MONTH_NAMES.map((name, i) => {
     const month = i + 1;
     const existing = byMonth.get(month);
-    return { month, name, budget_ghs: existing?.budget_ghs ?? 0, actual_ghs: existing?.actual_ghs ?? 0, hasEntry: Boolean(existing) };
+    return { month, name, budget_ghs: existing?.budget_ghs ?? 0, actual_ghs: existing?.actual_ghs ?? 0 };
   });
 
   const totals = rows.reduce((acc, r) => ({ budget: acc.budget + Number(r.budget_ghs), actual: acc.actual + Number(r.actual_ghs) }), { budget: 0, actual: 0 });
   const totalVariance = computeVariance(totals.actual, totals.budget);
+  const summary = sumByAssembly(data);
 
   const onCommit = (month, patch) => {
     const row = rows.find((r) => r.month === month);
-    upsert.mutate({ year, month, budget_ghs: row.budget_ghs, actual_ghs: row.actual_ghs, ...patch });
+    upsert.mutate({ year, month, assembly, budget_ghs: row.budget_ghs, actual_ghs: row.actual_ghs, ...patch });
   };
 
   return (
-    <div className="glass card" style={{ padding: 0, overflow: "hidden" }}>
-      <div className="row between" style={{ padding: "16px 18px" }}>
-        <h3 style={{ fontSize: 16 }}>{title}</h3>
-        <div className="row" style={{ gap: 8 }}>
-          <button className="btn btn-icon btn-ghost" onClick={() => setYear((y) => y - 1)}>
-            <span style={{ transform: "rotate(180deg)", display: "inline-flex" }}><Icon name="chevron" size={14} stroke={2} /></span>
-          </button>
-          <span className="badge">{year}</span>
-          <button className="btn btn-icon btn-ghost" onClick={() => setYear((y) => y + 1)}><Icon name="chevron" size={14} stroke={2} /></button>
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <div className="glass card" style={{ padding: 0, overflow: "hidden" }}>
+        <div className="row between" style={{ padding: "16px 18px" }}>
+          <h3 style={{ fontSize: 16 }}>{title}</h3>
+          <div className="row" style={{ gap: 8 }}>
+            <button className="btn btn-icon btn-ghost" onClick={() => setYear((y) => y - 1)}>
+              <span style={{ transform: "rotate(180deg)", display: "inline-flex" }}><Icon name="chevron" size={14} stroke={2} /></span>
+            </button>
+            <span className="badge">{year}</span>
+            <button className="btn btn-icon btn-ghost" onClick={() => setYear((y) => y + 1)}><Icon name="chevron" size={14} stroke={2} /></button>
+          </div>
         </div>
+        <div className="row" style={{ gap: 6, padding: "0 18px 14px" }}>
+          {ASSEMBLIES.map((a) => (
+            <button key={a} className={"btn" + (assembly === a ? " btn-primary" : " btn-ghost")} onClick={() => setAssembly(a)}>
+              {a} Service
+            </button>
+          ))}
+        </div>
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th>Budget (GHS)</th>
+              <th>Actual (GHS)</th>
+              <th>Variance</th>
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading && <tr><td colSpan={4} className="muted" style={{ padding: 20, textAlign: "center" }}>Loading…</td></tr>}
+            {!isLoading && rows.map((r) => {
+              const v = computeVariance(r.actual_ghs, r.budget_ghs);
+              return (
+                <tr key={r.month}>
+                  <td>{r.name}</td>
+                  <td>
+                    {canEdit ? (
+                      <EditableAmount value={r.budget_ghs} onCommit={(val) => onCommit(r.month, { budget_ghs: val })} />
+                    ) : formatGHS(r.budget_ghs)}
+                  </td>
+                  <td>
+                    {canEdit ? (
+                      <EditableAmount value={r.actual_ghs} onCommit={(val) => onCommit(r.month, { actual_ghs: val })} />
+                    ) : formatGHS(r.actual_ghs)}
+                  </td>
+                  <td>
+                    <VarianceBadge amount={v.amount} percent={v.percent} />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+          {!isLoading && (
+            <tfoot>
+              <tr style={{ fontWeight: 600 }}>
+                <td>{assembly} total</td>
+                <td>{formatGHS(totals.budget)}</td>
+                <td>{formatGHS(totals.actual)}</td>
+                <td><VarianceBadge amount={totalVariance.amount} percent={totalVariance.percent} /></td>
+              </tr>
+            </tfoot>
+          )}
+        </table>
       </div>
+
+      <LocalAssembliesSummary summary={summary} />
+      <VarianceAnalysisSummary summary={summary} />
+    </div>
+  );
+}
+
+// "Local Assemblies" — English/Twi/Total budget vs. actual for the whole
+// selected year, derived from the same 24-row dataset as the monthly
+// table above rather than entered separately, so the two can never drift
+// apart.
+function LocalAssembliesSummary({ summary }) {
+  const rows = [
+    { no: 1, label: "English Assembly", ...summary.byAssembly.English },
+    { no: 2, label: "Twi Assembly", ...summary.byAssembly.Twi },
+  ];
+  return (
+    <div className="glass card" style={{ padding: 0, overflow: "hidden" }}>
+      <div style={{ padding: "16px 18px" }}><h3 style={{ fontSize: 16 }}>Local assemblies</h3></div>
       <table className="table">
-        <thead>
-          <tr>
-            <th>Month</th>
-            <th>Budget (GHS)</th>
-            <th>Actual (GHS)</th>
-            <th>Variance</th>
-          </tr>
-        </thead>
+        <thead><tr><th>S/No</th><th>Local</th><th>Budget (GHS)</th><th>Actual (GHS)</th></tr></thead>
         <tbody>
-          {isLoading && <tr><td colSpan={4} className="muted" style={{ padding: 20, textAlign: "center" }}>Loading…</td></tr>}
-          {!isLoading && rows.map((r) => {
-            const v = computeVariance(r.actual_ghs, r.budget_ghs);
+          {rows.map((r) => (
+            <tr key={r.label}>
+              <td className="muted">{r.no}</td>
+              <td style={{ fontWeight: 500 }}>{r.label}</td>
+              <td>{formatGHS(r.budget)}</td>
+              <td>{formatGHS(r.actual)}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr style={{ fontWeight: 600 }}>
+            <td></td>
+            <td>Total</td>
+            <td>{formatGHS(summary.total.budget)}</td>
+            <td>{formatGHS(summary.total.actual)}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  );
+}
+
+function VarianceAnalysisSummary({ summary }) {
+  const rows = [
+    { no: 1, label: "English Assembly", ...summary.byAssembly.English },
+    { no: 2, label: "Twi Assembly", ...summary.byAssembly.Twi },
+  ];
+  return (
+    <div className="glass card" style={{ padding: 0, overflow: "hidden" }}>
+      <div style={{ padding: "16px 18px" }}><h3 style={{ fontSize: 16 }}>Variance analysis</h3></div>
+      <table className="table">
+        <thead><tr><th>S/No</th><th>Local</th><th>Variance</th></tr></thead>
+        <tbody>
+          {rows.map((r) => {
+            const v = computeVariance(r.actual, r.budget);
             return (
-              <tr key={r.month}>
-                <td>{r.name}</td>
-                <td>
-                  {canEdit ? (
-                    <EditableAmount value={r.budget_ghs} onCommit={(val) => onCommit(r.month, { budget_ghs: val })} />
-                  ) : formatGHS(r.budget_ghs)}
-                </td>
-                <td>
-                  {canEdit ? (
-                    <EditableAmount value={r.actual_ghs} onCommit={(val) => onCommit(r.month, { actual_ghs: val })} />
-                  ) : formatGHS(r.actual_ghs)}
-                </td>
-                <td>
-                  <VarianceBadge amount={v.amount} percent={v.percent} />
-                </td>
+              <tr key={r.label}>
+                <td className="muted">{r.no}</td>
+                <td style={{ fontWeight: 500 }}>{r.label}</td>
+                <td><VarianceBadge amount={v.amount} percent={v.percent} /></td>
               </tr>
             );
           })}
         </tbody>
-        {!isLoading && (
-          <tfoot>
-            <tr style={{ fontWeight: 600 }}>
-              <td>Total</td>
-              <td>{formatGHS(totals.budget)}</td>
-              <td>{formatGHS(totals.actual)}</td>
-              <td><VarianceBadge amount={totalVariance.amount} percent={totalVariance.percent} /></td>
-            </tr>
-          </tfoot>
-        )}
+        <tfoot>
+          {(() => {
+            const v = computeVariance(summary.total.actual, summary.total.budget);
+            return (
+              <tr style={{ fontWeight: 600 }}>
+                <td></td>
+                <td>Total</td>
+                <td><VarianceBadge amount={v.amount} percent={v.percent} /></td>
+              </tr>
+            );
+          })()}
+        </tfoot>
       </table>
     </div>
   );

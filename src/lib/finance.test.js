@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatGHS, computeVariance } from "./finance.js";
+import { formatGHS, computeVariance, sumByAssembly } from "./finance.js";
 
 // Intl.NumberFormat inserts a non-breaking space (not U+0020) between the
 // currency code and the number, so a hardcoded "GHS 1,234.50" literal
@@ -45,5 +45,38 @@ describe("computeVariance", () => {
   });
   it("treats missing values as zero", () => {
     expect(computeVariance(undefined, undefined)).toEqual({ amount: 0, percent: null });
+  });
+});
+
+describe("sumByAssembly", () => {
+  it("sums each assembly's rows across months and produces a grand total", () => {
+    const rows = [
+      { assembly: "English", budget_ghs: 1000, actual_ghs: 900 },
+      { assembly: "English", budget_ghs: 1000, actual_ghs: 1100 },
+      { assembly: "Twi", budget_ghs: 500, actual_ghs: 600 },
+    ];
+    const { byAssembly, total } = sumByAssembly(rows);
+    expect(byAssembly.English).toEqual({ budget: 2000, actual: 2000 });
+    expect(byAssembly.Twi).toEqual({ budget: 500, actual: 600 });
+    expect(total).toEqual({ budget: 2500, actual: 2600 });
+  });
+
+  it("still reports a zeroed row for an assembly with no rows yet, rather than omitting it", () => {
+    const { byAssembly, total } = sumByAssembly([{ assembly: "English", budget_ghs: 300, actual_ghs: 300 }]);
+    expect(byAssembly.Twi).toEqual({ budget: 0, actual: 0 });
+    expect(total).toEqual({ budget: 300, actual: 300 });
+  });
+
+  it("handles an empty or missing input without throwing", () => {
+    expect(sumByAssembly([])).toEqual({
+      byAssembly: { English: { budget: 0, actual: 0 }, Twi: { budget: 0, actual: 0 } },
+      total: { budget: 0, actual: 0 },
+    });
+    expect(sumByAssembly(undefined).total).toEqual({ budget: 0, actual: 0 });
+  });
+
+  it("ignores a row with an unrecognized assembly value rather than throwing", () => {
+    const { total } = sumByAssembly([{ assembly: "French", budget_ghs: 999, actual_ghs: 999 }]);
+    expect(total).toEqual({ budget: 0, actual: 0 });
   });
 });

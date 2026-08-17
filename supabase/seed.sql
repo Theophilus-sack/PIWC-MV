@@ -109,22 +109,25 @@ where sd.ministry_id is not null
     where sd2.ministry_id is not null limit 1
   );
 
--- Fake monthly tithe/missions-offering figures for the current year —
--- fabricated round-ish numbers for exercising the budget-vs-actual views,
--- not real church finances.
-insert into net_tithes_performance (year, month, budget_ghs, actual_ghs)
-select extract(year from current_date)::int, m,
-  6000 + (m * 150),
-  round(((6000 + (m * 150)) * (0.85 + random() * 0.3))::numeric, 2)
+-- Fake monthly tithe/missions-offering figures for the current year, per
+-- assembly (English typically runs larger than Twi here, purely as a
+-- believable-looking split — fabricated numbers for exercising the
+-- budget-vs-actual views, not real church finances).
+insert into net_tithes_performance (year, month, assembly, budget_ghs, actual_ghs)
+select extract(year from current_date)::int, m, a.assembly,
+  (4000 + (m * 100)) * a.weight,
+  round(((4000 + (m * 100)) * a.weight * (0.85 + random() * 0.3))::numeric, 2)
 from generate_series(1, 12) as m
-on conflict (year, month) do nothing;
+cross join (values ('English', 1.0), ('Twi', 0.6)) as a(assembly, weight)
+on conflict (year, month, assembly) do nothing;
 
-insert into missions_offering_performance (year, month, budget_ghs, actual_ghs)
-select extract(year from current_date)::int, m,
-  1500 + (m * 40),
-  round(((1500 + (m * 40)) * (0.8 + random() * 0.4))::numeric, 2)
+insert into missions_offering_performance (year, month, assembly, budget_ghs, actual_ghs)
+select extract(year from current_date)::int, m, a.assembly,
+  (1000 + (m * 25)) * a.weight,
+  round(((1000 + (m * 25)) * a.weight * (0.8 + random() * 0.4))::numeric, 2)
 from generate_series(1, 12) as m
-on conflict (year, month) do nothing;
+cross join (values ('English', 1.0), ('Twi', 0.6)) as a(assembly, weight)
+on conflict (year, month, assembly) do nothing;
 
 insert into designated_funds (district, fund_name, actual_prior_year_ghs, budget_current_year_ghs, actual_current_year_ghs)
 select * from (values

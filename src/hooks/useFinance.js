@@ -2,10 +2,15 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabaseClient.js";
 
 // net_tithes_performance and missions_offering_performance are identical
-// in shape (year, month, budget_ghs, actual_ghs) — one factory instead of
-// duplicating the same list/upsert pair twice.
+// in shape (year, month, assembly, budget_ghs, actual_ghs) — one factory
+// instead of duplicating the same list/upsert pair twice. Fetches the
+// whole year (both assemblies, 24 rows) in one query rather than one
+// query per assembly — the monthly table for whichever assembly is
+// selected AND the English/Twi/Total summary both derive from this same
+// dataset, so there's one source of truth instead of two queries that
+// could disagree.
 function monthlyPerformanceHooks(table, queryKeyPrefix) {
-  function useList(year) {
+  function useYearData(year) {
     return useQuery({
       queryKey: [queryKeyPrefix, year],
       queryFn: async () => {
@@ -19,23 +24,23 @@ function monthlyPerformanceHooks(table, queryKeyPrefix) {
   function useUpsert() {
     const queryClient = useQueryClient();
     return useMutation({
-      mutationFn: async ({ year, month, budget_ghs, actual_ghs }) => {
+      mutationFn: async ({ year, month, assembly, budget_ghs, actual_ghs }) => {
         const { error } = await supabase
           .from(table)
-          .upsert({ year, month, budget_ghs, actual_ghs }, { onConflict: "year,month" });
+          .upsert({ year, month, assembly, budget_ghs, actual_ghs }, { onConflict: "year,month,assembly" });
         if (error) throw error;
       },
       onSuccess: (_data, { year }) => queryClient.invalidateQueries({ queryKey: [queryKeyPrefix, year] }),
     });
   }
 
-  return { useList, useUpsert };
+  return { useYearData, useUpsert };
 }
 
-export const { useList: useTithesPerformance, useUpsert: useUpsertTithesMonth } =
+export const { useYearData: useTithesYear, useUpsert: useUpsertTithesMonth } =
   monthlyPerformanceHooks("net_tithes_performance", "tithes-performance");
 
-export const { useList: useMissionsPerformance, useUpsert: useUpsertMissionsMonth } =
+export const { useYearData: useMissionsYear, useUpsert: useUpsertMissionsMonth } =
   monthlyPerformanceHooks("missions_offering_performance", "missions-performance");
 
 // ---------- Designated funds ----------
@@ -121,10 +126,11 @@ export function useDeleteDistrictAccount() {
 
 // ---------- Dashboard ----------
 
-// Sum of this month's actual tithes + missions offering. Only meaningful
-// for roles with finance access — callers should gate on that via rbac
-// before rendering the result, since a role without access will just get
-// an RLS-filtered empty result (not an error).
+// Sum of this month's actual tithes + missions offering, across both
+// assemblies. Only meaningful for roles with finance access — callers
+// should gate on that via rbac before rendering the result, since a role
+// without access will just get an RLS-filtered empty result (not an
+// error).
 export function useCurrentMonthGiving() {
   const now = new Date();
   const year = now.getFullYear();
@@ -134,13 +140,15 @@ export function useCurrentMonthGiving() {
     queryKey: ["current-month-giving", year, month],
     queryFn: async () => {
       const [tithes, missions] = await Promise.all([
-        supabase.from("net_tithes_performance").select("actual_ghs").eq("year", year).eq("month", month).maybeSingle(),
-        supabase.from("missions_offering_performance").select("actual_ghs").eq("year", year).eq("month", month).maybeSingle(),
+        supabase.from("net_tithes_performance").select("actual_ghs").eq("year", year).eq("month", month),
+        supabase.from("missions_offering_performance").select("actual_ghs").eq("year", year).eq("month", month),
       ]);
       if (tithes.error) throw tithes.error;
       if (missions.error) throw missions.error;
-      const total = (tithes.data?.actual_ghs ?? 0) + (missions.data?.actual_ghs ?? 0);
-      return { total, hasData: Boolean(tithes.data || missions.data) };
+      const sum = (rows) => (rows ?? []).reduce((s, r) => s + Number(r.actual_ghs), 0);
+      const total = sum(tithes.data) + sum(missions.data);
+      const hasData = (tithes.data?.length ?? 0) > 0 || (missions.data?.length ?? 0) > 0;
+      return { total, hasData };
     },
   });
 }
