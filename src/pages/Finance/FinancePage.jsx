@@ -72,7 +72,7 @@ export function FinancePage() {
 function MonthlyPerformanceSection({ title, useYearData, useUpsert, canEdit }) {
   const [year, setYear] = useState(new Date().getFullYear());
   const [assembly, setAssembly] = useState("English");
-  const { data, isLoading } = useYearData(year); // both assemblies, 24 rows
+  const { data, isLoading, isError, error } = useYearData(year); // both assemblies, 24 rows
   const upsert = useUpsert();
 
   // Merge the selected assembly's fetched rows onto a full Jan-Dec
@@ -115,6 +115,16 @@ function MonthlyPerformanceSection({ title, useYearData, useUpsert, canEdit }) {
             </button>
           ))}
         </div>
+        {isError && (
+          <div className="badge badge-red" style={{ display: "block", margin: "0 18px 14px", padding: "8px 12px" }}>
+            Couldn't load figures: {error.message}
+          </div>
+        )}
+        {upsert.isError && (
+          <div className="badge badge-red" style={{ display: "block", margin: "0 18px 14px", padding: "8px 12px" }}>
+            Couldn't save: {upsert.error.message}
+          </div>
+        )}
         <table className="table">
           <thead>
             <tr>
@@ -277,7 +287,7 @@ function VarianceBadge({ amount, percent }) {
 // ============== Designated funds ==============
 
 function DesignatedFundsSection({ canEdit }) {
-  const { data: funds, isLoading } = useDesignatedFunds();
+  const { data: funds, isLoading, isError, error } = useDesignatedFunds();
   const deleteFund = useDeleteDesignatedFund();
   const [showAdd, setShowAdd] = useState(false);
   const [editingFund, setEditingFund] = useState(null);
@@ -289,6 +299,11 @@ function DesignatedFundsSection({ canEdit }) {
         <h3 style={{ fontSize: 16 }}>Designated funds</h3>
         {canEdit && <button className="btn btn-primary" onClick={() => setShowAdd(true)}><Icon name="plus" size={15} /> Add fund</button>}
       </div>
+      {isError && (
+        <div className="badge badge-red" style={{ display: "block", margin: "0 18px 14px", padding: "8px 12px" }}>
+          Couldn't load designated funds: {error.message}
+        </div>
+      )}
       <table className="table">
         <thead>
           <tr>
@@ -395,7 +410,7 @@ function DesignatedFundModal({ fund, onClose }) {
 // ============== District accounts (placeholder shape) ==============
 
 function DistrictAccountsSection({ canEdit }) {
-  const { data: entries, isLoading } = useDistrictAccounts();
+  const { data: entries, isLoading, isError, error } = useDistrictAccounts();
   const deleteEntry = useDeleteDistrictAccount();
   const [showAdd, setShowAdd] = useState(false);
 
@@ -411,6 +426,11 @@ function DistrictAccountsSection({ canEdit }) {
         </div>
         {canEdit && <button className="btn btn-primary" onClick={() => setShowAdd(true)}><Icon name="plus" size={15} /> Add entry</button>}
       </div>
+      {isError && (
+        <div className="badge badge-red" style={{ display: "block", margin: "0 18px 14px", padding: "8px 12px" }}>
+          Couldn't load district accounts: {error.message}
+        </div>
+      )}
       <table className="table">
         <thead>
           <tr>
