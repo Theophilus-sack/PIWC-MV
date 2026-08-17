@@ -341,9 +341,12 @@ h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.02em; }
 /* Modal — anchored near the top rather than vertically centered. A
    perfectly-centered modal looks fine for short content, but pushes the
    header disconcertingly low for a form with this many fields (Add
-   Member grew past what fits in one screen); anchoring near the top plus
-   letting the card scroll internally keeps the header where you expect
-   it regardless of form length. */
+   Member grew past what fits in one screen).
+   Exactly ONE scroll container (the overlay) — .modal-card used to also
+   set its own max-height + overflow-y, which meant two nested scrollable
+   regions fighting over mouse-wheel/touch input. The overlay alone
+   scrolling the whole fixed layer (backdrop + card together) is the
+   standard pattern and avoids that ambiguity entirely. */
 .modal-overlay {
   position: fixed; inset: 0; z-index: 50;
   display: flex; align-items: flex-start; justify-content: center;
@@ -354,8 +357,6 @@ h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.02em; }
 }
 .modal-card {
   width: 100%;
-  max-height: calc(100vh - 80px);
-  overflow-y: auto;
 }
 
 /* Switch */
