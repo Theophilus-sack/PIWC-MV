@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Icon } from "../../components/Icon.jsx";
+import { Modal } from "../../components/Modal.jsx";
 import { Switch, Checkbox } from "../../components/primitives.jsx";
 import { useCreateMember } from "../../hooks/useMembers.js";
 import { useMinistries, useAddMinistryMemberships } from "../../hooks/useMinistries.js";
@@ -57,7 +58,7 @@ export function AddMemberModal({ onClose }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <Modal onClose={onClose}>
       <div
         className="glass modal-card"
         style={{ maxWidth: 520, padding: 28 }}
@@ -166,6 +167,6 @@ export function AddMemberModal({ onClose }) {
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

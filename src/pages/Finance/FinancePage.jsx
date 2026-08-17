@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Icon } from "../../components/Icon.jsx";
+import { Modal } from "../../components/Modal.jsx";
 import { useAuth } from "../../lib/auth.jsx";
 import { accessLevel } from "../../lib/rbac.js";
 import { formatGHS, computeVariance, sumByAssembly, ASSEMBLIES, MONTH_NAMES } from "../../lib/finance.js";
@@ -382,7 +383,7 @@ function DesignatedFundModal({ fund, onClose }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <Modal onClose={onClose}>
       <div className="glass modal-card" style={{ maxWidth: 460, padding: 26 }} onClick={(e) => e.stopPropagation()}>
         <div className="row between" style={{ marginBottom: 14 }}>
           <h2 style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 500 }}>{fund ? "Edit fund" : "Add fund"}</h2>
@@ -403,7 +404,7 @@ function DesignatedFundModal({ fund, onClose }) {
           <button className="btn btn-primary" onClick={onSave} disabled={saving}>Save</button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -486,7 +487,7 @@ function DistrictAccountModal({ onClose }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <Modal onClose={onClose}>
       <div className="glass modal-card" style={{ maxWidth: 420, padding: 26 }} onClick={(e) => e.stopPropagation()}>
         <div className="row between" style={{ marginBottom: 14 }}>
           <h2 style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 500 }}>Add district account entry</h2>
@@ -504,6 +505,6 @@ function DistrictAccountModal({ onClose }) {
           <button className="btn btn-primary" onClick={onSave} disabled={create.isPending}>Save</button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

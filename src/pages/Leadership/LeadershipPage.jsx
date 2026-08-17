@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Icon } from "../../components/Icon.jsx";
+import { Modal } from "../../components/Modal.jsx";
 import { useAuth } from "../../lib/auth.jsx";
 import { accessLevel } from "../../lib/rbac.js";
 import { groupByAssembly } from "../../lib/assembly.js";
@@ -120,7 +121,7 @@ export function LeadershipPage() {
 
 function ModalShell({ title, onClose, children }) {
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <Modal onClose={onClose}>
       <div className="glass modal-card" style={{ maxWidth: 440, padding: 26 }} onClick={(e) => e.stopPropagation()}>
         <div className="row between" style={{ marginBottom: 14 }}>
           <h2 style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 500 }}>{title}</h2>
@@ -128,7 +129,7 @@ function ModalShell({ title, onClose, children }) {
         </div>
         {children}
       </div>
-    </div>
+    </Modal>
   );
 }
 

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Icon } from "../../components/Icon.jsx";
+import { Modal } from "../../components/Modal.jsx";
 import { useUpdateMember } from "../../hooks/useMembers.js";
 
 // Direct field editor for an existing member — unlike AddMemberModal's
@@ -40,7 +41,7 @@ export function EditMemberModal({ member, onClose }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <Modal onClose={onClose}>
       <div className="glass modal-card" style={{ maxWidth: 520, padding: 28 }} onClick={(e) => e.stopPropagation()}>
         <div className="row between" style={{ marginBottom: 14 }}>
           <div>
@@ -114,6 +115,6 @@ export function EditMemberModal({ member, onClose }) {
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

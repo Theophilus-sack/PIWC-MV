@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Icon } from "../../components/Icon.jsx";
+import { Modal } from "../../components/Modal.jsx";
 import { Avatar } from "../../components/primitives.jsx";
 import { useAuth } from "../../lib/auth.jsx";
 import { accessLevel } from "../../lib/rbac.js";
@@ -100,7 +101,6 @@ function Roster({ ministry, role, onDeleted }) {
   };
 
   return (
-    <>
     <div className="glass card">
       <div className="row between" style={{ marginBottom: 14 }}>
         <div>
@@ -133,7 +133,6 @@ function Roster({ ministry, role, onDeleted }) {
       ))}
       {!isLoading && (roster ?? []).length === 0 && <p className="muted" style={{ fontSize: 13 }}>No members in this ministry yet.</p>}
 
-    </div>
       {showEdit && <MinistryFormModal ministry={ministry} onClose={() => setShowEdit(false)} />}
       {showAdd && (
         <AddToRosterModal
@@ -143,7 +142,7 @@ function Roster({ ministry, role, onDeleted }) {
           onClose={() => setShowAdd(false)}
         />
       )}
-    </>
+    </div>
   );
 }
 
@@ -171,7 +170,7 @@ function MinistryFormModal({ ministry, onClose }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <Modal onClose={onClose}>
       <div className="glass modal-card" style={{ maxWidth: 420, padding: 26 }} onClick={(e) => e.stopPropagation()}>
         <div className="row between" style={{ marginBottom: 14 }}>
           <h2 style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 500 }}>{ministry ? "Edit ministry" : "Add ministry"}</h2>
@@ -197,7 +196,7 @@ function MinistryFormModal({ ministry, onClose }) {
           <button className="btn btn-primary" onClick={onSave} disabled={saving}>Save</button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -207,7 +206,7 @@ function AddToRosterModal({ ministryId, existingIds, onAdd, onClose }) {
   const candidates = (data?.rows ?? []).filter((m) => !existingIds.includes(m.id));
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <Modal onClose={onClose}>
       <div className="glass" style={{ width: "100%", maxWidth: 440, padding: 26, maxHeight: "70vh", display: "flex", flexDirection: "column" }} onClick={(e) => e.stopPropagation()}>
         <div className="row between" style={{ marginBottom: 14 }}>
           <h2 style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 500 }}>Add to roster</h2>
@@ -227,7 +226,7 @@ function AddToRosterModal({ ministryId, existingIds, onAdd, onClose }) {
           {candidates.length === 0 && <p className="muted" style={{ fontSize: 13 }}>No matches.</p>}
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 
