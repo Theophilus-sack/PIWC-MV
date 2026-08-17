@@ -192,6 +192,7 @@ function DesignatedFundsSection({ canEdit }) {
   const [editingFund, setEditingFund] = useState(null);
 
   return (
+    <>
     <div className="glass card" style={{ padding: 0, overflow: "hidden" }}>
       <div className="row between" style={{ padding: "16px 18px" }}>
         <h3 style={{ fontSize: 16 }}>Designated funds</h3>
@@ -240,10 +241,11 @@ function DesignatedFundsSection({ canEdit }) {
         </tbody>
       </table>
 
+    </div>
       {(showAdd || editingFund) && (
         <DesignatedFundModal fund={editingFund} onClose={() => { setShowAdd(false); setEditingFund(null); }} />
       )}
-    </div>
+    </>
   );
 }
 
@@ -307,6 +309,7 @@ function DistrictAccountsSection({ canEdit }) {
   const [showAdd, setShowAdd] = useState(false);
 
   return (
+    <>
     <div className="glass card" style={{ padding: 0, overflow: "hidden" }}>
       <div className="row between" style={{ padding: "16px 18px" }}>
         <div>
@@ -350,8 +353,9 @@ function DistrictAccountsSection({ canEdit }) {
         </tbody>
       </table>
 
-      {showAdd && <DistrictAccountModal onClose={() => setShowAdd(false)} />}
     </div>
+      {showAdd && <DistrictAccountModal onClose={() => setShowAdd(false)} />}
+    </>
   );
 }
 

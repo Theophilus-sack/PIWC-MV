@@ -100,6 +100,7 @@ function Roster({ ministry, role, onDeleted }) {
   };
 
   return (
+    <>
     <div className="glass card">
       <div className="row between" style={{ marginBottom: 14 }}>
         <div>
@@ -116,8 +117,6 @@ function Roster({ ministry, role, onDeleted }) {
           {canManage && <button className="btn btn-primary" onClick={() => setShowAdd(true)}><Icon name="plus" size={15} /> Add member</button>}
         </div>
       </div>
-      {showEdit && <MinistryFormModal ministry={ministry} onClose={() => setShowEdit(false)} />}
-
       {isLoading && <p className="muted">Loading…</p>}
       {(roster ?? []).map((r) => (
         <div key={r.id} className="row between" style={{ padding: "10px 0", borderTop: "1px solid var(--line-2)" }}>
@@ -134,6 +133,8 @@ function Roster({ ministry, role, onDeleted }) {
       ))}
       {!isLoading && (roster ?? []).length === 0 && <p className="muted" style={{ fontSize: 13 }}>No members in this ministry yet.</p>}
 
+    </div>
+      {showEdit && <MinistryFormModal ministry={ministry} onClose={() => setShowEdit(false)} />}
       {showAdd && (
         <AddToRosterModal
           ministryId={ministry.id}
@@ -142,7 +143,7 @@ function Roster({ ministry, role, onDeleted }) {
           onClose={() => setShowAdd(false)}
         />
       )}
-    </div>
+    </>
   );
 }
 
