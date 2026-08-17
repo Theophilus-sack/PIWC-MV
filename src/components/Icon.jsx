@@ -37,6 +37,7 @@ export const Icon = ({ name, size = 18, stroke = 1.6 }) => {
     shield: <><path d="M12 2 4 6v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V6z"/></>,
     mic: <><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 19v3"/></>,
     heart: <><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></>,
+    menu: <><path d="M3 6h18M3 12h18M3 18h18"/></>,
   };
   return <svg viewBox="0 0 24 24" {...s}>{paths[name]}</svg>;
 };

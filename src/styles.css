@@ -348,7 +348,7 @@ h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.02em; }
    scrolling the whole fixed layer (backdrop + card together) is the
    standard pattern and avoids that ambiguity entirely. */
 .modal-overlay {
-  position: fixed; inset: 0; z-index: 50;
+  position: fixed; inset: 0; z-index: 80; /* above the mobile sidebar drawer (70) and its scrim (65) */
   display: flex; align-items: flex-start; justify-content: center;
   background: color-mix(in srgb, var(--blue-900) 40%, transparent);
   backdrop-filter: blur(8px);
@@ -396,3 +396,75 @@ h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.02em; }
 /* Logo handling — source PNGs are white-on-transparent */
 .logo-img { display: block; }
 [data-theme="light"] .logo-img.invert-on-light { filter: brightness(0) saturate(100%) invert(11%) sepia(56%) saturate(2300%) hue-rotate(217deg) brightness(95%) contrast(95%); }
+
+/* ============================================================
+   RESPONSIVE
+   Desktop layout (everything above) is unchanged above 860px.
+   Two breakpoints: 860px (tablet — sidebar becomes a drawer, dense
+   grids drop to 2 columns) and 560px (phone — grids drop to 1 column,
+   headings shrink). ============================================== */
+
+.menu-toggle { display: none; }
+.sidebar-close { display: none; }
+.sidebar-scrim { display: none; }
+
+@media (max-width: 860px) {
+  .app { grid-template-columns: 1fr; }
+
+  /* Sidebar becomes an off-canvas drawer instead of a grid column —
+     fixed, full-height, slides in from the left. .sidebar already
+     carries .glass (backdrop-filter), which is fine here since the
+     drawer itself is the top-level fixed element, not nested inside
+     another fixed/backdrop-filter ancestor (the trap that bit modals). */
+  .sidebar {
+    position: fixed; top: 0; bottom: 0; left: 0; z-index: 70;
+    width: 280px; max-width: 82vw;
+    margin: 0; border-radius: 0;
+    transform: translateX(-100%);
+    transition: transform 0.22s ease;
+  }
+  .sidebar.sidebar-open { transform: translateX(0); }
+  .sidebar-close { display: inline-flex; }
+
+  .sidebar-scrim {
+    display: block;
+    position: fixed; inset: 0; z-index: 65;
+    background: rgba(0, 0, 0, 0.45);
+    animation: fade-up 0.15s ease both;
+  }
+
+  .main { margin: 8px; }
+
+  .menu-toggle { display: inline-flex; }
+  .topbar .breadcrumb { display: none; }
+  .topbar { gap: 8px; padding: 8px 10px; }
+  .search kbd { display: none; }
+
+  /* Every grid on the app — both the cols-2/3/4 utility classes and the
+     handful of pages that set gridTemplateColumns inline for asymmetric
+     layouts (e.g. a 300px sidebar list next to a wide panel) — collapses
+     to 2 columns here. The !important is necessary only for the inline
+     cases: an inline style prop otherwise always wins over an external
+     stylesheet rule regardless of specificity. */
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+
+  /* Tables (Members, Finance) scroll horizontally inside their card
+     rather than squeezing columns unreadably or breaking the page's own
+     layout. The inline overflow:hidden these cards carry (for rounded
+     corners) sets both overflow-x and overflow-y — this overrides just
+     overflow-x, so the rounded-corner clipping on the other axis holds. */
+  .card:has(.table) { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+  .table { min-width: 620px; }
+
+  .page-header { flex-direction: column; align-items: flex-start; }
+  .page-header h1 { font-size: 26px; }
+
+  .modal-overlay { padding: 20px 12px; }
+}
+
+@media (max-width: 560px) {
+  .grid { grid-template-columns: 1fr !important; }
+  .page-header h1 { font-size: 22px; }
+  .stat-card .value { font-size: 30px; }
+  .search input::placeholder { font-size: 13px; }
+}

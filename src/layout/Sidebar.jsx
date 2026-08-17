@@ -13,20 +13,26 @@ function initialsOf(name) {
 
 // Ported from the original app.jsx <aside> markup — same classes/layout,
 // nav list is now role-filtered and routed instead of a hardcoded 4-item array.
-export function Sidebar() {
+// On mobile this becomes an off-canvas drawer (see .sidebar CSS media
+// query) — `open`/`onClose` only matter below that breakpoint; at desktop
+// widths the sidebar is always visible regardless of `open`.
+export function Sidebar({ open, onClose }) {
   const { profile, role, signOut } = useAuth();
   const items = navForRole(role);
 
   return (
-    <aside className="sidebar glass" data-screen-label="Sidebar">
+    <aside className={"sidebar glass" + (open ? " sidebar-open" : "")} data-screen-label="Sidebar">
       <div className="brand">
         <div className="brand-mark">
           <img src="/assets/logo-mark.png" alt="" />
         </div>
-        <div>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div className="brand-name">Mountain View</div>
           <div className="brand-sub">PIWC · CMS</div>
         </div>
+        <button className="btn btn-icon btn-ghost sidebar-close" onClick={onClose} aria-label="Close menu">
+          <Icon name="x" size={16} />
+        </button>
       </div>
 
       <div className="sidebar-nav-scroll">

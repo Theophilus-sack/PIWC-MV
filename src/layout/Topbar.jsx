@@ -5,15 +5,20 @@ import { NAV_ITEMS } from "../lib/rbac.js";
 
 const SECTION_LABEL = { "/settings": "Workspace" };
 
-// Ported from app.jsx's <div className="topbar">.
-export function Topbar({ theme, onToggleTheme }) {
+// Ported from app.jsx's <div className="topbar">. onMenuClick opens the
+// mobile sidebar drawer — the button itself is hidden at desktop widths
+// via CSS (.menu-toggle), where the sidebar is always visible instead.
+export function Topbar({ theme, onToggleTheme, onMenuClick }) {
   const { pathname } = useLocation();
   const current = NAV_ITEMS.find((n) => n.path === pathname);
   const title = current?.label ?? SECTION_LABEL[pathname] ?? "Mountain View";
 
   return (
     <div className="topbar glass" data-screen-label="Topbar">
-      <div className="row" style={{ gap: 10 }}>
+      <button className="btn btn-icon btn-ghost menu-toggle" onClick={onMenuClick} aria-label="Open menu">
+        <Icon name="menu" size={17} />
+      </button>
+      <div className="row breadcrumb" style={{ gap: 10 }}>
         <span className="muted" style={{ fontSize: 12.5 }}>PIWC Mountain View</span>
         <span className="faint">/</span>
         <span style={{ fontSize: 13, fontWeight: 500 }}>{title}</span>
