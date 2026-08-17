@@ -213,7 +213,7 @@ h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.02em; }
 /* Layout */
 .app {
   position: relative; z-index: 1;
-  display: grid; grid-template-columns: 248px 1fr;
+  display: grid; grid-template-columns: 248px minmax(0, 1fr);
   height: 100vh; overflow: hidden;
 }
 .sidebar {
@@ -266,7 +266,7 @@ h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.02em; }
 .nav-item .badge { margin-left: auto; }
 
 .main {
-  display: flex; flex-direction: column; min-height: 0;
+  display: flex; flex-direction: column; min-height: 0; min-width: 0;
   margin: 16px 16px 16px 8px;
 }
 .topbar {
@@ -288,11 +288,70 @@ h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.02em; }
 }
 
 .content {
-  flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px;
+  flex: 1; min-height: 0; min-width: 0; overflow-y: auto; padding-right: 4px;
   scrollbar-width: thin; scrollbar-color: var(--line) transparent;
 }
 .content::-webkit-scrollbar { width: 8px; }
 .content::-webkit-scrollbar-thumb { background: var(--line); border-radius: 8px; }
+
+/* ============================================================
+   GLOBAL HORIZONTAL SCROLL — pair with the <ScrollX> component
+   (src/components/ScrollX.jsx). Wrap any content that can be wider
+   than its container (tables, wide toolbars, dense data grids) in
+   <ScrollX> instead of writing bespoke overflow CSS per page. It's a
+   no-op when content already fits — overflow-x:auto only produces a
+   scrollbar once scrollWidth exceeds the container, and only the
+   wrapped element scrolls, never the whole page (the .app/.main/.content
+   chain above is width-contained via minmax(0,1fr)/min-width:0 so a
+   wide descendant can't force the page itself wider).
+   ============================================================ */
+.scroll-x {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ink-4) transparent;
+}
+.scroll-x::-webkit-scrollbar { height: 9px; }
+.scroll-x::-webkit-scrollbar-track { background: transparent; }
+.scroll-x::-webkit-scrollbar-thumb {
+  background: var(--ink-4);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.scroll-x::-webkit-scrollbar-thumb:hover { background: var(--gold-500); }
+/* Coarse pointers (touch) get a chunkier thumb — easier to grab and drag,
+   per the same custom-scrollbar rules browsers apply on desktop/trackpad. */
+@media (pointer: coarse) {
+  .scroll-x::-webkit-scrollbar { height: 11px; }
+}
+
+/* Tables keep a sane minimum width instead of squeezing every column
+   unreadably thin on narrow containers — once a table's natural content
+   needs more room than that, .scroll-x (its wrapper, see above) is what
+   makes the extra width reachable rather than clipped. Comfortably under
+   the smallest supported viewport (320px) is fine: the table doesn't need
+   to fit unscrolled there, it needs to stay legible while scrolled. */
+.table { min-width: 620px; }
+
+/* Fallback for any table not yet wrapped in <ScrollX> — keeps old markup
+   functional (native scrollbar, no custom styling) rather than silently
+   clipping columns. Prefer wrapping new tables in <ScrollX> explicitly.
+   !important is required: these cards carry an inline style={{overflow:
+   "hidden"}} (for rounded corners) which otherwise always wins over any
+   stylesheet rule, regardless of specificity. */
+.card:has(.table) { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+
+/* Filter/toolbar rows (search input + several fixed-width <select>s) wrap
+   onto multiple lines on narrow screens instead of forcing the row — and
+   with it every ancestor up to .content — wider than the viewport. Opt in
+   with `className="row filter-bar"`. */
+@media (max-width: 640px) {
+  .filter-bar { flex-wrap: wrap; }
+  .filter-bar > .search { flex: 1 1 100%; max-width: none; }
+  .filter-bar > select { flex: 1 1 140px; width: auto !important; }
+}
 
 .page-header {
   display: flex; align-items: flex-end; justify-content: space-between; gap: 16px;
@@ -447,14 +506,6 @@ h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.02em; }
      cases: an inline style prop otherwise always wins over an external
      stylesheet rule regardless of specificity. */
   .grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-
-  /* Tables (Members, Finance) scroll horizontally inside their card
-     rather than squeezing columns unreadably or breaking the page's own
-     layout. The inline overflow:hidden these cards carry (for rounded
-     corners) sets both overflow-x and overflow-y — this overrides just
-     overflow-x, so the rounded-corner clipping on the other axis holds. */
-  .card:has(.table) { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
-  .table { min-width: 620px; }
 
   .page-header { flex-direction: column; align-items: flex-start; }
   .page-header h1 { font-size: 26px; }

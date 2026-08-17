@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "../../components/Icon.jsx";
 import { Avatar, Checkbox } from "../../components/primitives.jsx";
+import { ScrollX } from "../../components/ScrollX.jsx";
 import { useMembers, useDeleteMember } from "../../hooks/useMembers.js";
 import { useMinistries } from "../../hooks/useMinistries.js";
 import { useAuth } from "../../lib/auth.jsx";
@@ -60,7 +61,7 @@ export function MembersList() {
       </div>
 
       <div className="glass card" style={{ padding: 14, marginBottom: 14 }}>
-        <div className="row" style={{ gap: 10 }}>
+        <div className="row filter-bar" style={{ gap: 10 }}>
           <div className="search" style={{ flex: 1, maxWidth: "none" }}>
             <Icon name="search" size={16} />
             <input placeholder="Search by name or phone…" value={q} onChange={(e) => onSearchChange(e.target.value)} />
@@ -87,6 +88,7 @@ export function MembersList() {
           <div style={{ padding: 20 }} className="badge badge-red">Couldn't load members: {error.message}</div>
         )}
         {!isError && (
+          <ScrollX>
           <table className="table">
             <thead>
               <tr>
@@ -142,6 +144,7 @@ export function MembersList() {
               ))}
             </tbody>
           </table>
+          </ScrollX>
         )}
         <div className="row between" style={{ padding: "12px 16px", borderTop: "1px solid var(--line)" }}>
           <span className="muted" style={{ fontSize: 12.5 }}>

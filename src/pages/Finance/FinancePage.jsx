@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Icon } from "../../components/Icon.jsx";
 import { Modal } from "../../components/Modal.jsx";
+import { ScrollX } from "../../components/ScrollX.jsx";
 import { useAuth } from "../../lib/auth.jsx";
 import { accessLevel } from "../../lib/rbac.js";
 import { formatGHS, computeVariance, sumByAssembly, ASSEMBLIES, MONTH_NAMES } from "../../lib/finance.js";
@@ -126,6 +127,7 @@ function MonthlyPerformanceSection({ title, useYearData, useUpsert, canEdit }) {
             Couldn't save: {upsert.error.message}
           </div>
         )}
+        <ScrollX>
         <table className="table">
           <thead>
             <tr>
@@ -170,6 +172,7 @@ function MonthlyPerformanceSection({ title, useYearData, useUpsert, canEdit }) {
             </tfoot>
           )}
         </table>
+        </ScrollX>
       </div>
 
       <LocalAssembliesSummary summary={summary} />
@@ -190,6 +193,7 @@ function LocalAssembliesSummary({ summary }) {
   return (
     <div className="glass card" style={{ padding: 0, overflow: "hidden" }}>
       <div style={{ padding: "16px 18px" }}><h3 style={{ fontSize: 16 }}>Local assemblies</h3></div>
+      <ScrollX>
       <table className="table">
         <thead><tr><th>S/No</th><th>Local</th><th>Budget (GHS)</th><th>Actual (GHS)</th></tr></thead>
         <tbody>
@@ -211,6 +215,7 @@ function LocalAssembliesSummary({ summary }) {
           </tr>
         </tfoot>
       </table>
+      </ScrollX>
     </div>
   );
 }
@@ -223,6 +228,7 @@ function VarianceAnalysisSummary({ summary }) {
   return (
     <div className="glass card" style={{ padding: 0, overflow: "hidden" }}>
       <div style={{ padding: "16px 18px" }}><h3 style={{ fontSize: 16 }}>Variance analysis</h3></div>
+      <ScrollX>
       <table className="table">
         <thead><tr><th>S/No</th><th>Local</th><th>Variance</th></tr></thead>
         <tbody>
@@ -250,6 +256,7 @@ function VarianceAnalysisSummary({ summary }) {
           })()}
         </tfoot>
       </table>
+      </ScrollX>
     </div>
   );
 }
@@ -305,6 +312,7 @@ function DesignatedFundsSection({ canEdit }) {
           Couldn't load designated funds: {error.message}
         </div>
       )}
+      <ScrollX>
       <table className="table">
         <thead>
           <tr>
@@ -347,6 +355,7 @@ function DesignatedFundsSection({ canEdit }) {
           ))}
         </tbody>
       </table>
+      </ScrollX>
 
     </div>
       {(showAdd || editingFund) && (
@@ -432,6 +441,7 @@ function DistrictAccountsSection({ canEdit }) {
           Couldn't load district accounts: {error.message}
         </div>
       )}
+      <ScrollX>
       <table className="table">
         <thead>
           <tr>
@@ -464,6 +474,7 @@ function DistrictAccountsSection({ canEdit }) {
           ))}
         </tbody>
       </table>
+      </ScrollX>
 
     </div>
       {showAdd && <DistrictAccountModal onClose={() => setShowAdd(false)} />}
