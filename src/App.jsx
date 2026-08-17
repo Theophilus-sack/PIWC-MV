@@ -11,13 +11,13 @@ import { MemberDetail } from "./pages/Members/MemberDetail.jsx";
 import { AttendancePage } from "./pages/Attendance/AttendancePage.jsx";
 import { LeadershipPage } from "./pages/Leadership/LeadershipPage.jsx";
 import { GroupsPage } from "./pages/Groups/GroupsPage.jsx";
+import { FinancePage } from "./pages/Finance/FinancePage.jsx";
 
 // Modules with a real page built. One entry per NAV_ITEMS module still
 // left in MODULE_ROUTES below — module key must match rbac.js so nav
 // visibility and route guarding stay in sync.
 const MODULE_ROUTES = [
   { path: "/pastoral-care", module: "pastoral_care", title: "Pastoral Care", phase: "Phase 6" },
-  { path: "/finance", module: "finance", title: "Finance", phase: "Phase 3" },
   { path: "/messages", module: "messages", title: "Messages", phase: "Phase 4" },
   { path: "/events", module: "events", title: "Events", phase: "Phase 6" },
   { path: "/inventory", module: "inventory", title: "Inventory", phase: "Phase 6" },
@@ -47,6 +47,7 @@ export default function App() {
         <Route path="/attendance" element={<ProtectedRoute module="attendance"><AttendancePage /></ProtectedRoute>} />
         <Route path="/leadership" element={<ProtectedRoute module="leadership"><LeadershipPage /></ProtectedRoute>} />
         <Route path="/groups" element={<ProtectedRoute module="groups"><GroupsPage /></ProtectedRoute>} />
+        <Route path="/finance" element={<ProtectedRoute module="finance"><FinancePage /></ProtectedRoute>} />
 
         {MODULE_ROUTES.map(({ path, module, title, phase }) => (
           <Route

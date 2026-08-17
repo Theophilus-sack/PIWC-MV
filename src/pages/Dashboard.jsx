@@ -1,11 +1,14 @@
 import React from "react";
 import { Icon } from "../components/Icon.jsx";
 import { useAuth } from "../lib/auth.jsx";
+import { accessLevel } from "../lib/rbac.js";
+import { formatGHS } from "../lib/finance.js";
 import { useMemberStats } from "../hooks/useMembers.js";
 import { useLastServiceAttendance } from "../hooks/useAttendance.js";
+import { useCurrentMonthGiving } from "../hooks/useFinance.js";
 
-// Members/Attendance stats are now real (Phase 2); Finance ("this month's
-// giving") stays an empty-state placeholder until Phase 3 wires it up.
+// Members/Attendance stats (Phase 2) and Finance (Phase 3) are both real
+// now.
 //
 // The Pastor's dashboard is intentionally a distinct branch, not a
 // relabeled default — per spec it surfaces reports routed to him and a
@@ -60,8 +63,11 @@ function PastorDashboard({ firstName }) {
 }
 
 function StatGrid() {
+  const { role } = useAuth();
+  const hasFinanceAccess = Boolean(accessLevel(role, "finance"));
   const { data: memberStats, isLoading: membersLoading } = useMemberStats();
   const { data: lastService, isLoading: attendanceLoading } = useLastServiceAttendance();
+  const { data: giving, isLoading: givingLoading } = useCurrentMonthGiving();
 
   return (
     <div className="grid cols-4">
@@ -91,10 +97,21 @@ function StatGrid() {
       <div className="glass stat-card">
         <div className="deco" style={{ background: "var(--blue-700)" }} />
         <div className="label">This month's giving</div>
-        <div className="value" style={{ color: "var(--ink-4)" }}>—</div>
-        <div className="muted" style={{ fontSize: 12, marginTop: 10, display: "flex", alignItems: "center", gap: 6 }}>
-          <Icon name="reports" size={13} /> Lands in Phase 3
-        </div>
+        {hasFinanceAccess ? (
+          <>
+            <div className="value" style={{ fontSize: 28 }}>{givingLoading ? "—" : formatGHS(giving?.total)}</div>
+            <div className="muted" style={{ fontSize: 12, marginTop: 10, display: "flex", alignItems: "center", gap: 6 }}>
+              <Icon name="reports" size={13} /> {giving?.hasData ? "Tithes + missions offering" : "No figures entered yet"}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="value" style={{ color: "var(--ink-4)" }}>—</div>
+            <div className="muted" style={{ fontSize: 12, marginTop: 10, display: "flex", alignItems: "center", gap: 6 }}>
+              <Icon name="lock" size={13} /> Restricted to Finance
+            </div>
+          </>
+        )}
       </div>
 
       <div className="glass stat-card">

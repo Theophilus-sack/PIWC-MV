@@ -91,3 +91,26 @@ select sd.id, mm.member_id, random() < 0.8
 from service_dates sd
 join ministry_members mm on mm.ministry_id = sd.ministry_id
 where sd.ministry_id is not null;
+
+-- Fake monthly tithe/missions-offering figures for the current year —
+-- fabricated round-ish numbers for exercising the budget-vs-actual views,
+-- not real church finances.
+insert into net_tithes_performance (year, month, budget_ghs, actual_ghs)
+select extract(year from current_date)::int, m,
+  6000 + (m * 150),
+  round((6000 + (m * 150)) * (0.85 + random() * 0.3), 2)
+from generate_series(1, 12) as m
+on conflict (year, month) do nothing;
+
+insert into missions_offering_performance (year, month, budget_ghs, actual_ghs)
+select extract(year from current_date)::int, m,
+  1500 + (m * 40),
+  round((1500 + (m * 40)) * (0.8 + random() * 0.4), 2)
+from generate_series(1, 12) as m
+on conflict (year, month) do nothing;
+
+insert into designated_funds (district, fund_name, actual_prior_year_ghs, budget_current_year_ghs, actual_current_year_ghs)
+values
+  ('Madina District', 'Building Fund', 42000, 60000, 51000),
+  ('Madina District', 'Welfare Fund', 8000, 10000, 9200),
+  ('Madina District', 'Youth Camp Fund', 5000, 7000, 4300);
