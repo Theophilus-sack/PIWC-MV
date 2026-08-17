@@ -35,17 +35,20 @@ export function FinancePage() {
         </div>
       </div>
 
-      <div className="row" style={{ gap: 6, marginBottom: 16 }}>
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            className={"btn" + (tab === t.key ? " btn-primary" : " btn-ghost")}
-            onClick={() => setTab(t.key)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <ScrollX style={{ marginBottom: 16 }}>
+        <div className="row" style={{ gap: 6, width: "max-content" }}>
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              className={"btn" + (tab === t.key ? " btn-primary" : " btn-ghost")}
+              onClick={() => setTab(t.key)}
+              style={{ flexShrink: 0 }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </ScrollX>
 
       {tab === "tithes" && (
         <MonthlyPerformanceSection

@@ -287,8 +287,18 @@ h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.02em; }
   background: var(--bg-2); border: 1px solid var(--line); color: var(--ink-3);
 }
 
+/* overflow-x is explicit (not left as the default "visible"): per the CSS
+   Overflow spec, when one axis is non-visible and the other is "visible",
+   the visible axis's used value is forced to "auto" instead — so without
+   this, .content's own overflow-y:auto would silently turn .content into
+   a horizontal scroll container for anything that overflows inside it
+   (e.g. an unwrapped row of tabs), scrolling the whole page — heading and
+   all — instead of just the offending element. .content is the page
+   container; it must never scroll horizontally itself. Only .scroll-x
+   (the <ScrollX> component) is allowed to own horizontal scroll — wrap
+   any content that can overflow in it rather than relying on an ancestor. */
 .content {
-  flex: 1; min-height: 0; min-width: 0; overflow-y: auto; padding-right: 4px;
+  flex: 1; min-height: 0; min-width: 0; overflow-y: auto; overflow-x: hidden; padding-right: 4px;
   scrollbar-width: thin; scrollbar-color: var(--line) transparent;
 }
 .content::-webkit-scrollbar { width: 8px; }
