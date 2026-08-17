@@ -1,24 +1,29 @@
--- Dev/demo seed data — Phase 2.
+-- Dev/demo seed data — Phase 2 + Phase 3.
 -- Everything here is fabricated for development and performance testing
 -- (the real workbook has ~2000-row tabs; we seed close to that so
 -- pagination/perf can be verified against a realistic volume). No real
 -- member names, phone numbers, or figures — never paste real congregation
 -- data into this file.
 --
--- Run once against a database that already has 0001_foundation.sql and
--- 0002_core_data.sql applied (paste into SQL Editor, or `supabase db push`
--- then run this separately — it's seed data, not schema).
+-- Safe to run this whole file more than once: every bulk section is
+-- guarded to only insert when its table is still empty, so re-running it
+-- (e.g. after adding a later phase's fake data below) won't duplicate
+-- anything already seeded. Requires 0001_foundation.sql through
+-- 0007_finance.sql already applied.
 
 insert into ministries (name) values
   ('Choir'), ('Ushering'), ('Media'), ('Children'), ('Youth'),
   ('Evangelism'), ('Hospitality'), ('Prayer')
 on conflict (name, assembly) do nothing;
 
-insert into presbyters (name, contact) values
+insert into presbyters (name, contact)
+select * from (values
   ('Presbyter Kwabena Owusu', '+233 24 111 2222'),
   ('Presbyter Yaa Asantewaa', '+233 24 222 3333'),
   ('Presbyter Kojo Mensah', '+233 24 333 4444'),
-  ('Presbyter Efua Sarpong', '+233 24 444 5555');
+  ('Presbyter Efua Sarpong', '+233 24 444 5555')
+) as v(name, contact)
+where not exists (select 1 from presbyters limit 1);
 
 insert into ministry_leadership (ministry_id, leader_name, portfolio, contact)
 select mi.id, v.leader_name, v.portfolio, v.contact
@@ -32,7 +37,8 @@ from (values
   ('Hospitality', 'Yaw Asare', 'President', '+233 24 607 7007'),
   ('Prayer', 'Akosua Frimpong', 'President', '+233 24 608 7008')
 ) as v(ministry_name, leader_name, portfolio, contact)
-join ministries mi on mi.name = v.ministry_name;
+join ministries mi on mi.name = v.ministry_name
+where not exists (select 1 from ministry_leadership limit 1);
 
 -- ~2000 fake members, matching the real workbook's rough tab size so we
 -- can actually exercise pagination/perf rather than testing against a
@@ -60,37 +66,48 @@ select
     || ' ' || (1000 + floor(random() * 8999))::int,
   case when random() > 0.15 then 'English' else 'Twi' end,
   (array['stay','stay','stay','stay','first-timer','visit'])[1 + floor(random() * 6)::int]
-from generate_series(1, 2000), first_names fn, last_names ln;
+from generate_series(1, 2000), first_names fn, last_names ln
+where not exists (select 1 from members limit 1);
 
 -- ~60% of members belong to one ministry each.
 insert into ministry_members (member_id, ministry_id)
 select m.id, mi.id
 from members m
 cross join lateral (select id from ministries order by random() limit 1) mi
-where random() < 0.6;
+where random() < 0.6
+  and not exists (select 1 from ministry_members limit 1);
 
 -- 10 weeks of general Sunday services + two ministry-specific gatherings.
 insert into service_dates (service_date, name, ministry_id)
 select current_date - (n * 7), 'Sunday 1st Service', null
-from generate_series(0, 9) as n;
+from generate_series(0, 9) as n
+where not exists (select 1 from service_dates limit 1);
 
 insert into service_dates (service_date, name, ministry_id)
 select current_date - 3, 'Choir Rehearsal', id from ministries where name = 'Choir'
+  and not exists (select 1 from service_dates where name = 'Choir Rehearsal' limit 1)
 union all
-select current_date - 10, 'Youth Meeting', id from ministries where name = 'Youth';
+select current_date - 10, 'Youth Meeting', id from ministries where name = 'Youth'
+  and not exists (select 1 from service_dates where name = 'Youth Meeting' limit 1);
 
 -- Attendance: ~75% present for general services, ~80% for ministry ones.
 insert into attendance_records (service_date_id, member_id, present)
 select sd.id, m.id, random() < 0.75
 from service_dates sd
 cross join members m
-where sd.ministry_id is null;
+where sd.ministry_id is null
+  and not exists (select 1 from attendance_records limit 1);
 
 insert into attendance_records (service_date_id, member_id, present)
 select sd.id, mm.member_id, random() < 0.8
 from service_dates sd
 join ministry_members mm on mm.ministry_id = sd.ministry_id
-where sd.ministry_id is not null;
+where sd.ministry_id is not null
+  and not exists (
+    select 1 from attendance_records ar
+    join service_dates sd2 on sd2.id = ar.service_date_id
+    where sd2.ministry_id is not null limit 1
+  );
 
 -- Fake monthly tithe/missions-offering figures for the current year —
 -- fabricated round-ish numbers for exercising the budget-vs-actual views,
@@ -110,7 +127,9 @@ from generate_series(1, 12) as m
 on conflict (year, month) do nothing;
 
 insert into designated_funds (district, fund_name, actual_prior_year_ghs, budget_current_year_ghs, actual_current_year_ghs)
-values
+select * from (values
   ('Madina District', 'Building Fund', 42000, 60000, 51000),
   ('Madina District', 'Welfare Fund', 8000, 10000, 9200),
-  ('Madina District', 'Youth Camp Fund', 5000, 7000, 4300);
+  ('Madina District', 'Youth Camp Fund', 5000, 7000, 4300)
+) as v(district, fund_name, actual_prior_year_ghs, budget_current_year_ghs, actual_current_year_ghs)
+where not exists (select 1 from designated_funds limit 1);
