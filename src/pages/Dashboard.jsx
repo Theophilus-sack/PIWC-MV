@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { Icon } from "../components/Icon.jsx";
 import { useAuth } from "../lib/auth.jsx";
 import { accessLevel } from "../lib/rbac.js";
@@ -36,6 +37,7 @@ export function Dashboard() {
 }
 
 function PastorDashboard({ firstName }) {
+  const navigate = useNavigate();
   return (
     <div className="fade-in">
       <div className="page-header">
@@ -52,10 +54,10 @@ function PastorDashboard({ firstName }) {
           <h3 style={{ fontSize: 18, marginTop: 4, marginBottom: 10 }}>Reports awaiting review</h3>
           <p className="muted" style={{ fontSize: 13.5 }}>Nothing routed yet — this fills in as Reports (Phase 6) comes online.</p>
         </div>
-        <div className="glass card">
+        <div className="glass card" style={{ cursor: "pointer" }} onClick={() => navigate("/sermon-prep")}>
           <div className="eyebrow">Word Prep</div>
           <h3 style={{ fontSize: 18, marginTop: 4, marginBottom: 10 }}>Sermon notes</h3>
-          <p className="muted" style={{ fontSize: 13.5 }}>Your exclusive space — no one else, including Super Admin, can see this. Coming in Phase 5.</p>
+          <p className="muted" style={{ fontSize: 13.5 }}>Your exclusive space — no one else, including Super Admin, can see this.</p>
         </div>
       </div>
     </div>
