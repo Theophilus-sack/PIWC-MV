@@ -38,9 +38,15 @@ Deno.serve(async (req) => {
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // Caller-scoped client — used only to verify who's asking.
+    // Caller-scoped client — used only to verify who's asking. The
+    // global.headers Authorization set here only applies to REST/table
+    // calls (the .from("profiles") query below) — GoTrue's own
+    // auth.getUser() manages its own session state and ignores it, so the
+    // JWT has to be passed to getUser() explicitly or it just sees "no
+    // session" and fails closed with a generic auth error.
+    const jwt = authHeader.replace(/^Bearer\s+/i, "");
     const callerClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
-    const { data: userData, error: userError } = await callerClient.auth.getUser();
+    const { data: userData, error: userError } = await callerClient.auth.getUser(jwt);
     if (userError || !userData?.user) return json({ error: "Not authenticated" }, 401);
 
     const { data: callerProfile, error: profileError } = await callerClient
