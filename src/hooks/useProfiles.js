@@ -32,3 +32,33 @@ export function useUpdateProfileRole() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["profiles"] }),
   });
 }
+
+// Creates the auth.users row + assigns role/ministry in one step, via the
+// invite-user Edge Function (the only place the service-role key is
+// used — see that function's own comment). redirectTo is computed
+// client-side from window.location so the function never has to guess
+// this deployment's URL.
+export function useInviteUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ email, fullName, role, ministryId }) => {
+      const { data, error } = await supabase.functions.invoke("invite-user", {
+        body: {
+          email, fullName, role: role || null, ministryId: ministryId || null,
+          redirectTo: `${window.location.origin}/login`,
+        },
+      });
+      if (error) {
+        // Non-2xx responses come back as a generic FunctionsHttpError —
+        // the specific message ("Only Super Admin or Pastor can invite
+        // users", a duplicate-email rejection, etc.) is in the response
+        // body, reachable via error.context (the raw Response object).
+        const body = await error.context?.json?.().catch(() => null);
+        throw new Error(body?.error || error.message);
+      }
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["profiles"] }),
+  });
+}
