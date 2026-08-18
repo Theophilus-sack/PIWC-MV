@@ -45,7 +45,7 @@ export function useInviteUser() {
       const { data, error } = await supabase.functions.invoke("invite-user", {
         body: {
           email, fullName, role: role || null, ministryId: ministryId || null,
-          redirectTo: `${window.location.origin}/login`,
+          redirectTo: `${window.location.origin}/set-password`,
         },
       });
       if (error) {

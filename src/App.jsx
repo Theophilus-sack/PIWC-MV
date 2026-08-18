@@ -3,6 +3,7 @@ import { Routes, Route } from "react-router-dom";
 import { AppShell } from "./layout/AppShell.jsx";
 import { ProtectedRoute } from "./lib/ProtectedRoute.jsx";
 import { Login } from "./pages/Login.jsx";
+import { SetPassword } from "./pages/SetPassword.jsx";
 import { Dashboard } from "./pages/Dashboard.jsx";
 import { SettingsPage } from "./pages/Settings.jsx";
 import { MembersList } from "./pages/Members/MembersList.jsx";
@@ -27,6 +28,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/set-password" element={<SetPassword />} />
 
       <Route
         element={
