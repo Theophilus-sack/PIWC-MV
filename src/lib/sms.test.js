@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { smsSegmentInfo, normalizeGhanaPhone, validateSendRequest, MAX_RECIPIENTS_PER_SEND } from "./sms.js";
+import {
+  smsSegmentInfo, normalizeGhanaPhone, validateSendRequest, MAX_RECIPIENTS_PER_SEND,
+  splitName, applyTemplateVariables, dedupeRecipientsByPhone,
+} from "./sms.js";
 
 describe("smsSegmentInfo", () => {
   it("empty body is zero segments", () => {
@@ -97,5 +100,81 @@ describe("validateSendRequest", () => {
   it("rejects an invalid scheduled time", () => {
     const result = validateSendRequest({ ...base, scheduledAt: "not-a-date" });
     expect(result.ok).toBe(false);
+  });
+});
+
+describe("splitName", () => {
+  it("splits a two-word name into first/last", () => {
+    expect(splitName("Isaac Mensah")).toEqual({ firstName: "Isaac", lastName: "Mensah" });
+  });
+  it("joins remaining words into lastName for a three-word name", () => {
+    expect(splitName("Kofi Ama Boateng")).toEqual({ firstName: "Kofi", lastName: "Ama Boateng" });
+  });
+  it("a single-word name has an empty lastName", () => {
+    expect(splitName("Isaac")).toEqual({ firstName: "Isaac", lastName: "" });
+  });
+  it("collapses extra internal whitespace", () => {
+    expect(splitName("Isaac   Mensah")).toEqual({ firstName: "Isaac", lastName: "Mensah" });
+  });
+  it("empty/missing name returns empty strings, not undefined", () => {
+    expect(splitName("")).toEqual({ firstName: "", lastName: "" });
+    expect(splitName(null)).toEqual({ firstName: "", lastName: "" });
+    expect(splitName(undefined)).toEqual({ firstName: "", lastName: "" });
+  });
+});
+
+describe("applyTemplateVariables", () => {
+  it("resolves every supported variable", () => {
+    const result = applyTemplateVariables(
+      "Dear {{first_name}} {{last_name}} ({{full_name}}), reach us on {{phone}}. — {{ministry}}",
+      { firstName: "Isaac", lastName: "Mensah", fullName: "Isaac Mensah", phone: "233244555123", ministry: "Youth" }
+    );
+    expect(result).toBe("Dear Isaac Mensah (Isaac Mensah), reach us on 233244555123. — Youth");
+  });
+
+  it("replaces a variable used more than once in the same message", () => {
+    const result = applyTemplateVariables("{{first_name}}, hi {{first_name}}!", { firstName: "Ama" });
+    expect(result).toBe("Ama, hi Ama!");
+  });
+
+  it("missing recipient fields resolve to an empty string, not the literal token", () => {
+    const result = applyTemplateVariables("Dear {{first_name}}, from {{ministry}}", { firstName: "Ama" });
+    expect(result).toBe("Dear Ama, from ");
+    expect(result).not.toContain("{{");
+  });
+
+  it("a body with no variables passes through unchanged", () => {
+    expect(applyTemplateVariables("Plain message, no tokens.", { firstName: "Ama" })).toBe("Plain message, no tokens.");
+  });
+
+  it("handles a completely missing recipient object", () => {
+    expect(applyTemplateVariables("Hi {{first_name}}", undefined)).toBe("Hi ");
+  });
+});
+
+describe("dedupeRecipientsByPhone", () => {
+  it("keeps recipients with distinct phone numbers", () => {
+    const recipients = [{ phone: "0244555123" }, { phone: "0207778899" }];
+    const result = dedupeRecipientsByPhone(recipients);
+    expect(result.recipients).toHaveLength(2);
+    expect(result.duplicatesRemoved).toBe(0);
+  });
+
+  it("drops a later duplicate, keeping the first occurrence", () => {
+    const recipients = [{ name: "Member A", phone: "0244555123" }, { name: "Manual B", phone: "0244555123" }];
+    const result = dedupeRecipientsByPhone(recipients);
+    expect(result.recipients).toEqual([{ name: "Member A", phone: "0244555123" }]);
+    expect(result.duplicatesRemoved).toBe(1);
+  });
+
+  it("recognizes duplicates across different phone formats for the same number", () => {
+    const recipients = [{ phone: "0244555123" }, { phone: "+233244555123" }, { phone: "233244555123" }];
+    const result = dedupeRecipientsByPhone(recipients);
+    expect(result.recipients).toHaveLength(1);
+    expect(result.duplicatesRemoved).toBe(2);
+  });
+
+  it("empty input returns empty output", () => {
+    expect(dedupeRecipientsByPhone([])).toEqual({ recipients: [], duplicatesRemoved: 0 });
   });
 });

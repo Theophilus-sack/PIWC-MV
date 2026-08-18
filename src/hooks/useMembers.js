@@ -10,9 +10,12 @@ const SORTS = {
 // screen loaded the whole array into a useState and filtered client-side,
 // which doesn't hold up at the workbook's real scale (~2000 rows). Every
 // filter here becomes a WHERE clause instead of an Array.filter.
-export function useMembers({ page = 0, pageSize = 20, search = "", ministryId = "", assembly = "", sort = "recent" } = {}) {
+// gender/residence are additive, optional filters (added for the
+// Messages recipient picker's Gender/Location filters) — every existing
+// caller that doesn't pass them behaves exactly as before.
+export function useMembers({ page = 0, pageSize = 20, search = "", ministryId = "", assembly = "", gender = "", residence = "", sort = "recent" } = {}) {
   return useQuery({
-    queryKey: ["members", { page, pageSize, search, ministryId, assembly, sort }],
+    queryKey: ["members", { page, pageSize, search, ministryId, assembly, gender, residence, sort }],
     queryFn: async () => {
       let query = supabase
         .from("members")
@@ -26,6 +29,12 @@ export function useMembers({ page = 0, pageSize = 20, search = "", ministryId = 
       }
       if (assembly) {
         query = query.eq("preferred_assembly", assembly);
+      }
+      if (gender) {
+        query = query.eq("gender", gender);
+      }
+      if (residence) {
+        query = query.ilike("residence", `%${residence}%`);
       }
 
       const { column, ascending } = SORTS[sort] ?? SORTS.recent;

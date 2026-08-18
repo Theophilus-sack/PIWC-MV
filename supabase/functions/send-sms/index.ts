@@ -51,6 +51,21 @@ Deno.serve(async (req) => {
       return json(balance);
     }
 
+    // Read-only account/config surface for the UI's Sender ID display —
+    // never editable per-message from the client. Arkesel sender IDs must
+    // be pre-registered with Arkesel; a typed-in-the-UI sender ID would
+    // just fail at the provider, so this only ever reflects the
+    // ARKESEL_SENDER_ID secret, not user input.
+    if (payload.action === "config") {
+      const mode = Deno.env.get("SMS_MODE") ?? "mock";
+      if (mode === "live") {
+        const apiKey = Deno.env.get("ARKESEL_API_KEY");
+        const senderId = Deno.env.get("ARKESEL_SENDER_ID");
+        return json({ mode, senderId: senderId ?? null, ready: Boolean(apiKey && senderId) });
+      }
+      return json({ mode, senderId: "MOCK", ready: true });
+    }
+
     const { batchId } = payload;
     if (!batchId) return json({ error: "batchId is required" }, 400);
 
@@ -70,7 +85,7 @@ Deno.serve(async (req) => {
 
     const { data: messages, error: messagesError } = await supabase
       .from("sms_messages")
-      .select("id, recipient_phone")
+      .select("id, recipient_phone, resolved_body")
       .eq("batch_id", batchId)
       .eq("status", "queued");
     if (messagesError) return json({ error: messagesError.message }, 500);
@@ -78,32 +93,44 @@ Deno.serve(async (req) => {
 
     await supabase.from("sms_batches").update({ status: "sending" }).eq("id", batchId);
 
-    const phoneByNormalized = new Map(
-      messages.map((m) => [normalizeGhanaPhone(m.recipient_phone) ?? m.recipient_phone, m])
-    );
-    const provider = getProvider();
-    const results = await provider.send([...phoneByNormalized.keys()], batch.body);
+    // Group by the effective per-recipient text (personalized recipients
+    // carry their own resolved_body; everyone else falls back to the
+    // batch's shared body) so a non-personalized send still costs exactly
+    // one provider call, and a personalized one fans out into one call
+    // per distinct resolved text rather than one call per recipient.
+    const groups = new Map<string, { messageId: string; phone: string }[]>();
+    for (const m of messages) {
+      const phone = normalizeGhanaPhone(m.recipient_phone) ?? m.recipient_phone;
+      const effectiveBody = m.resolved_body ?? batch.body;
+      if (!groups.has(effectiveBody)) groups.set(effectiveBody, []);
+      groups.get(effectiveBody)!.push({ messageId: m.id, phone });
+    }
 
+    const provider = getProvider();
     const now = new Date().toISOString();
     let sentCount = 0;
     let failedCount = 0;
 
-    await Promise.all(
-      results.map(async (result) => {
-        const message = phoneByNormalized.get(result.phone);
-        if (!message) return;
-        if (result.status === "sent") sentCount++; else failedCount++;
-        await supabase
-          .from("sms_messages")
-          .update({
-            status: result.status,
-            provider_message_id: result.providerMessageId ?? null,
-            error_message: result.errorMessage ?? null,
-            sent_at: now,
-          })
-          .eq("id", message.id);
-      })
-    );
+    for (const [effectiveBody, entries] of groups) {
+      const results = await provider.send(entries.map((e) => e.phone), effectiveBody);
+      const messageIdByPhone = new Map(entries.map((e) => [e.phone, e.messageId]));
+      await Promise.all(
+        results.map(async (result) => {
+          const messageId = messageIdByPhone.get(result.phone);
+          if (!messageId) return;
+          if (result.status === "sent") sentCount++; else failedCount++;
+          await supabase
+            .from("sms_messages")
+            .update({
+              status: result.status,
+              provider_message_id: result.providerMessageId ?? null,
+              error_message: result.errorMessage ?? null,
+              sent_at: now,
+            })
+            .eq("id", messageId);
+        })
+      );
+    }
 
     const finalStatus = failedCount === 0 ? "sent" : sentCount === 0 ? "failed" : "partially_failed";
     await supabase.from("sms_batches").update({ status: finalStatus, sent_at: now }).eq("id", batchId);

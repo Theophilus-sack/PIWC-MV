@@ -66,7 +66,7 @@ export function useMinistryRoster(ministryId) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("ministry_members")
-        .select("id, member_id, members(id, name, gender, contact, status)")
+        .select("id, member_id, members(id, name, gender, contact, status, residence)")
         .eq("ministry_id", ministryId);
       if (error) throw error;
       return data ?? [];

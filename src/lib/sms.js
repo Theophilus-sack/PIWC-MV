@@ -70,3 +70,79 @@ export const SMS_STATUS_LABELS = {
   failed: "Failed",
   partially_failed: "Partially failed",
 };
+
+// Members are stored as a single `name` field (no separate first/last
+// columns) — split on whitespace the same way the various `initialsOf`
+// helpers scattered across pages already do, just exposed here so
+// personalization can reuse the same convention.
+export function splitName(fullName) {
+  const parts = (fullName ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return { firstName: "", lastName: "" };
+  return { firstName: parts[0], lastName: parts.slice(1).join(" ") };
+}
+
+export const TEMPLATE_VARIABLES = [
+  { token: "{{first_name}}", label: "First name" },
+  { token: "{{last_name}}", label: "Last name" },
+  { token: "{{full_name}}", label: "Full name" },
+  { token: "{{phone}}", label: "Phone" },
+  { token: "{{ministry}}", label: "Ministry" },
+];
+
+/**
+ * Resolves {{first_name}}/{{last_name}}/{{full_name}}/{{phone}}/
+ * {{ministry}} against one recipient. Unknown/missing values become an
+ * empty string rather than leaving the literal token in the sent
+ * message — a blank is a smaller failure than "Dear {{first_name}},".
+ */
+export function applyTemplateVariables(body, recipient = {}) {
+  const { firstName = "", lastName = "", fullName = "", phone = "", ministry = "" } = recipient;
+  return (body ?? "")
+    .replaceAll("{{first_name}}", firstName)
+    .replaceAll("{{last_name}}", lastName)
+    .replaceAll("{{full_name}}", fullName)
+    .replaceAll("{{phone}}", phone)
+    .replaceAll("{{ministry}}", ministry);
+}
+
+export const TEMPLATE_CATEGORIES = [
+  { value: "sunday_service", label: "Sunday Service" },
+  { value: "prayer_meeting", label: "Prayer Meeting" },
+  { value: "youth", label: "Youth" },
+  { value: "general_announcement", label: "General Announcement" },
+  { value: "birthday", label: "Birthday" },
+  { value: "wedding", label: "Wedding" },
+  { value: "funeral", label: "Funeral" },
+  { value: "emergency", label: "Emergency" },
+  { value: "giving", label: "Giving" },
+  { value: "follow_up", label: "Follow-up" },
+];
+
+/**
+ * A member and a manual contact can legitimately share a phone number
+ * (e.g. someone who's both). Keeps the first occurrence per normalized
+ * phone, drops the rest — so combining Members + Manual Contacts as
+ * recipients never sends the same person the same SMS twice.
+ */
+export function dedupeRecipientsByPhone(recipients) {
+  const seen = new Set();
+  const deduped = [];
+  let duplicatesRemoved = 0;
+  for (const r of recipients) {
+    const normalized = normalizeGhanaPhone(r.phone) ?? r.phone;
+    if (seen.has(normalized)) {
+      duplicatesRemoved++;
+      continue;
+    }
+    seen.add(normalized);
+    deduped.push(r);
+  }
+  return { recipients: deduped, duplicatesRemoved };
+}
+
+export const AUTOMATION_TRIGGER_LABELS = {
+  birthday: "Birthday",
+  welcome: "Welcome (new member)",
+  event_reminder: "Event reminder",
+  follow_up: "Follow-up",
+};

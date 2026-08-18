@@ -40,6 +40,7 @@ export const Icon = ({ name, size = 18, stroke = 1.6 }) => {
     menu: <><path d="M3 6h18M3 12h18M3 18h18"/></>,
     send: <><path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/></>,
     clock: <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></>,
+    refresh: <><path d="M21 12a9 9 0 0 1-15.3 6.4L3 15.7"/><path d="M3 12a9 9 0 0 1 15.3-6.4L21 8.3"/><path d="M3 21v-5.3h5.3"/><path d="M21 3v5.3h-5.3"/></>,
   };
   return <svg viewBox="0 0 24 24" {...s}>{paths[name]}</svg>;
 };
