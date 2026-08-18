@@ -126,3 +126,47 @@ export function useRemoveMinistryMember() {
     },
   });
 }
+
+// ---------- Ministry activity log (Phase 6, extends Groups/Ministries) ----------
+
+export function useMinistryActivities(ministryId) {
+  return useQuery({
+    queryKey: ["ministry-activities", ministryId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ministry_activities")
+        .select("*")
+        .eq("ministry_id", ministryId)
+        .order("activity_date", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: Boolean(ministryId),
+  });
+}
+
+export function useCreateMinistryActivity() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (activity) => {
+      const { error } = await supabase.from("ministry_activities").insert(activity);
+      if (error) throw error;
+    },
+    onSuccess: (_data, { ministry_id }) => {
+      queryClient.invalidateQueries({ queryKey: ["ministry-activities", ministry_id] });
+    },
+  });
+}
+
+export function useDeleteMinistryActivity() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id }) => {
+      const { error } = await supabase.from("ministry_activities").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_data, { ministryId }) => {
+      queryClient.invalidateQueries({ queryKey: ["ministry-activities", ministryId] });
+    },
+  });
+}

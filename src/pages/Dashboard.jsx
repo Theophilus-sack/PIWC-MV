@@ -49,10 +49,10 @@ function PastorDashboard({ firstName }) {
       </div>
       <StatGrid />
       <div className="grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 14 }}>
-        <div className="glass card">
+        <div className="glass card" style={{ cursor: "pointer" }} onClick={() => navigate("/reports")}>
           <div className="eyebrow">Routed to you</div>
-          <h3 style={{ fontSize: 18, marginTop: 4, marginBottom: 10 }}>Reports awaiting review</h3>
-          <p className="muted" style={{ fontSize: 13.5 }}>Nothing routed yet — this fills in as Reports (Phase 6) comes online.</p>
+          <h3 style={{ fontSize: 18, marginTop: 4, marginBottom: 10 }}>Reports</h3>
+          <p className="muted" style={{ fontSize: 13.5 }}>Members, attendance, finance, and messaging — summarized in one place.</p>
         </div>
         <div className="glass card" style={{ cursor: "pointer" }} onClick={() => navigate("/sermon-prep")}>
           <div className="eyebrow">Word Prep</div>

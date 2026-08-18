@@ -5,7 +5,6 @@ import { ProtectedRoute } from "./lib/ProtectedRoute.jsx";
 import { Login } from "./pages/Login.jsx";
 import { Dashboard } from "./pages/Dashboard.jsx";
 import { SettingsPage } from "./pages/Settings.jsx";
-import { ComingSoon } from "./pages/ComingSoon.jsx";
 import { MembersList } from "./pages/Members/MembersList.jsx";
 import { MemberDetail } from "./pages/Members/MemberDetail.jsx";
 import { AttendancePage } from "./pages/Attendance/AttendancePage.jsx";
@@ -16,16 +15,13 @@ import { MessagesPage } from "./pages/Messages/MessagesPage.jsx";
 import { SermonPrepPage } from "./pages/SermonPrep/SermonPrepPage.jsx";
 import { AuditLogsPage } from "./pages/AuditLogs/AuditLogsPage.jsx";
 import { AdminPage } from "./pages/Admin/AdminPage.jsx";
+import { PastoralCarePage } from "./pages/PastoralCare/PastoralCarePage.jsx";
+import { EventsPage } from "./pages/Events/EventsPage.jsx";
+import { InventoryPage } from "./pages/Inventory/InventoryPage.jsx";
+import { ReportsPage } from "./pages/Reports/ReportsPage.jsx";
 
-// Modules with a real page built. One entry per NAV_ITEMS module still
-// left in MODULE_ROUTES below — module key must match rbac.js so nav
-// visibility and route guarding stay in sync.
-const MODULE_ROUTES = [
-  { path: "/pastoral-care", module: "pastoral_care", title: "Pastoral Care", phase: "Phase 6" },
-  { path: "/events", module: "events", title: "Events", phase: "Phase 6" },
-  { path: "/inventory", module: "inventory", title: "Inventory", phase: "Phase 6" },
-  { path: "/reports", module: "reports", title: "Reports", phase: "Phase 6" },
-];
+// Every module in rbac.js's NAV_ITEMS now has a real page — Phase 6 was
+// the last of the 13.
 
 export default function App() {
   return (
@@ -52,18 +48,10 @@ export default function App() {
         <Route path="/sermon-prep" element={<ProtectedRoute module="sermon_prep"><SermonPrepPage /></ProtectedRoute>} />
         <Route path="/audit-logs" element={<ProtectedRoute module="audit_logs"><AuditLogsPage /></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute module="admin"><AdminPage /></ProtectedRoute>} />
-
-        {MODULE_ROUTES.map(({ path, module, title, phase }) => (
-          <Route
-            key={path}
-            path={path}
-            element={
-              <ProtectedRoute module={module}>
-                <ComingSoon title={title} phase={phase} />
-              </ProtectedRoute>
-            }
-          />
-        ))}
+        <Route path="/pastoral-care" element={<ProtectedRoute module="pastoral_care"><PastoralCarePage /></ProtectedRoute>} />
+        <Route path="/events" element={<ProtectedRoute module="events"><EventsPage /></ProtectedRoute>} />
+        <Route path="/inventory" element={<ProtectedRoute module="inventory"><InventoryPage /></ProtectedRoute>} />
+        <Route path="/reports" element={<ProtectedRoute module="reports"><ReportsPage /></ProtectedRoute>} />
       </Route>
     </Routes>
   );
