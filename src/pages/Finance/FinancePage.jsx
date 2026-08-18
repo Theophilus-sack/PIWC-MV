@@ -320,7 +320,7 @@ function DesignatedFundsSection({ canEdit }) {
         <thead>
           <tr>
             <th>Fund</th>
-            <th>District</th>
+            <th>Date Held</th>
             <th>Prior year actual</th>
             <th>Budget (this year)</th>
             <th>Actual (this year)</th>
