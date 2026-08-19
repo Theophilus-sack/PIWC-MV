@@ -10,6 +10,7 @@ const EXPECTED_ACCESS = {
   members:       { super_admin: true,  pastor: true,  finance: false, ministry_leader: true,  comms_media: false, secretary: true },
   attendance:    { super_admin: true,  pastor: true,  finance: false, ministry_leader: true,  comms_media: false, secretary: true },
   support_ordinance: { super_admin: true,  pastor: true,  finance: false, ministry_leader: false, comms_media: false, secretary: true },
+  pastoral_care: { super_admin: true,  pastor: true,  finance: false, ministry_leader: false, comms_media: false, secretary: true },
   finance:       { super_admin: true,  pastor: true,  finance: true,  ministry_leader: false, comms_media: false, secretary: false },
   messages:      { super_admin: true,  pastor: true,  finance: false, ministry_leader: true,  comms_media: true,  secretary: true },
   events:        { super_admin: true,  pastor: true,  finance: false, ministry_leader: true,  comms_media: true,  secretary: true },

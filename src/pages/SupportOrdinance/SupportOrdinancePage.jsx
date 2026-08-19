@@ -113,7 +113,7 @@ function LifeEventSection({ canEdit }) {
   const filtered = (events ?? []).filter((e) =>
     yearOf(e.event_date) === year &&
     (!category || e.category === category) &&
-    matchesSearch([e.names, e.names_child_parents_bereaved, e.venue, e.category], search)
+    matchesSearch([e.names, e.names_child_parents_bereaved, e.venue, e.category, e.notes], search)
   );
 
   return (
@@ -132,13 +132,13 @@ function LifeEventSection({ canEdit }) {
           <thead>
             <tr>
               <th>Date</th><th>Life Event</th><th>Names (Child/Couples/Deceased)</th>
-              <th>Names (Child's Parents/Name of Bereaved Member)</th><th>Venue</th><th>Attendance</th><th></th>
+              <th>Names (Child's Parents/Name of Bereaved Member)</th><th>Venue</th><th>Attendance</th><th>Notes</th><th></th>
             </tr>
           </thead>
           <tbody>
-            {isLoading && <tr><td colSpan={7} className="muted" style={{ padding: 20, textAlign: "center" }}>Loading…</td></tr>}
+            {isLoading && <tr><td colSpan={8} className="muted" style={{ padding: 20, textAlign: "center" }}>Loading…</td></tr>}
             {!isLoading && filtered.length === 0 && (
-              <tr><td colSpan={7} className="muted" style={{ padding: 20, textAlign: "center" }}>
+              <tr><td colSpan={8} className="muted" style={{ padding: 20, textAlign: "center" }}>
                 {(events ?? []).length ? "No life events match." : "No life events logged yet."}
               </td></tr>
             )}
@@ -150,6 +150,7 @@ function LifeEventSection({ canEdit }) {
                 <td className="muted">{e.names_child_parents_bereaved || "—"}</td>
                 <td className="muted">{e.venue || "—"}</td>
                 <td>{e.attendance ?? "—"}</td>
+                <td className="muted" style={{ fontSize: 13 }}>{e.notes || "—"}</td>
                 <td>
                   {canEdit && (
                     <div className="row" style={{ gap: 4 }}>
@@ -175,6 +176,7 @@ function LifeEventFormModal({ event, onClose }) {
   const [secondaryNames, setSecondaryNames] = useState(event?.names_child_parents_bereaved ?? "");
   const [venue, setVenue] = useState(event?.venue ?? "");
   const [attendance, setAttendance] = useState(event?.attendance ?? "");
+  const [notes, setNotes] = useState(event?.notes ?? "");
   const [error, setError] = useState(null);
   const createEvent = useCreateLifeEvent();
   const updateEvent = useUpdateLifeEvent();
@@ -186,6 +188,7 @@ function LifeEventFormModal({ event, onClose }) {
       category, event_date: eventDate, names: names.trim(),
       names_child_parents_bereaved: secondaryNames.trim() || null,
       venue: venue || null, attendance: attendance === "" ? null : Number(attendance),
+      notes: notes.trim() || null,
     };
     try {
       if (event) await updateEvent.mutateAsync({ id: event.id, ...payload });
@@ -225,6 +228,7 @@ function LifeEventFormModal({ event, onClose }) {
             <div className="field"><label>Venue</label><input className="input" value={venue} onChange={(e) => setVenue(e.target.value)} /></div>
             <div className="field"><label>Attendance</label><input type="number" min="0" className="input" value={attendance} onChange={(e) => setAttendance(e.target.value)} /></div>
           </div>
+          <div className="field"><label>Notes</label><textarea className="textarea" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
         </div>
         {error && <div className="badge badge-red" style={{ display: "block", marginTop: 14, padding: "8px 12px" }}>{error}</div>}
         <div className="row" style={{ gap: 8, marginTop: 20, justifyContent: "flex-end" }}>

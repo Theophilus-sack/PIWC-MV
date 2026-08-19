@@ -34,6 +34,7 @@ export const MODULES = [
   "members",
   "attendance",
   "support_ordinance",
+  "pastoral_care",
   "finance",
   "messages",
   "events",
@@ -51,6 +52,7 @@ export const MODULE_LABELS = {
   members: "Members",
   attendance: "Attendance",
   support_ordinance: "Support/Ordinance",
+  pastoral_care: "Pastoral Care",
   finance: "Finance",
   messages: "Messages",
   events: "Events",
@@ -70,6 +72,10 @@ const MATRIX = {
   members:        { super_admin: "full", pastor: "view", finance: null,   ministry_leader: "own",  comms_media: null,   secretary: "full" },
   attendance:     { super_admin: "full", pastor: "view", finance: null,   ministry_leader: "log",   comms_media: null,   secretary: "log" },
   support_ordinance: { super_admin: "full", pastor: "full", finance: null, ministry_leader: null,    comms_media: null,   secretary: "view" },
+  // Placeholder module — a real, separate Pastoral Care build (members by
+  // location/zone/assigned leader) comes later; this just reserves the
+  // nav slot now with the same access shape as Support/Ordinance.
+  pastoral_care:  { super_admin: "full", pastor: "full", finance: null, ministry_leader: null,    comms_media: null,   secretary: "view" },
   finance:        { super_admin: "full", pastor: "view", finance: "full", ministry_leader: null,    comms_media: null,   secretary: null },
   messages:       { super_admin: "full", pastor: "view", finance: null,   ministry_leader: "own",   comms_media: "full", secretary: "send" },
   events:         { super_admin: "full", pastor: "full", finance: null,   ministry_leader: "own",   comms_media: "full", secretary: "log" },
@@ -107,6 +113,7 @@ export const NAV_ITEMS = [
   { key: "members", module: "members", label: "Members", icon: "members", path: "/members" },
   { key: "attendance", module: "attendance", label: "Attendance", icon: "attendance", path: "/attendance" },
   { key: "support_ordinance", module: "support_ordinance", label: "Support/Ordinance", icon: "heart", path: "/support-ordinance" },
+  { key: "pastoral_care", module: "pastoral_care", label: "Pastoral Care", icon: "pin", path: "/pastoral-care" },
   { key: "finance", module: "finance", label: "Finance", icon: "reports", path: "/finance" },
   { key: "messages", module: "messages", label: "Messages", icon: "bell", path: "/messages" },
   { key: "events", module: "events", label: "Events", icon: "calendar", path: "/events" },
