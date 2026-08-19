@@ -56,4 +56,15 @@ describe("Phase 6 Pastoral Care RLS policies (static)", () => {
       expect(body).not.toContain("'finance'");
     });
   }
+
+  describe("life_events.names_child_parents_bereaved (0017) — additive only", () => {
+    it("adds the new column via ADD COLUMN", () => {
+      expect(sql).toMatch(/alter table life_events add column names_child_parents_bereaved text/);
+    });
+
+    it("never renames or drops life_events.names — existing Life Event data must stay intact", () => {
+      expect(sql).not.toMatch(/alter table life_events\s+rename column names/i);
+      expect(sql).not.toMatch(/alter table life_events\s+drop column names\b/i);
+    });
+  });
 });

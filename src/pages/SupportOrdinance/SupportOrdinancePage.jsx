@@ -11,20 +11,31 @@ import {
   useSoulsWon, useCreateSoulWon, useDeleteSoulWon,
   useWaterBaptisms, useCreateWaterBaptism, useDeleteWaterBaptism,
   useHolySpiritBaptisms, useCreateHolySpiritBaptism, useDeleteHolySpiritBaptism,
-} from "../../hooks/usePastoralCare.js";
+} from "../../hooks/useSupportOrdinance.js";
 
+// Renamed from Pastoral Care — the module key/route in rbac.js is now
+// support_ordinance, deliberately freeing up "pastoral_care" for a
+// separate, future module (members organized by location/zone/assigned
+// leader) that this one is explicitly not a stand-in for. See rbac.js's
+// MATRIX/NAV_ITEMS and App.jsx for the other half of that rename.
 const TABS = [
-  { key: "life-events", label: "Life Events" },
-  { key: "member-support", label: "Member Support" },
-  { key: "evangelism", label: "Evangelism" },
+  { key: "life-event", label: "Life Event" },
+  { key: "support", label: "Support" },
+  { key: "ordinance", label: "Ordinance" },
 ];
 
 const LIFE_EVENT_CATEGORIES = ["Naming", "Wedding", "Engagement", "Funeral"];
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+const yearOf = (d) => d ? new Date(d).getFullYear() : null;
+const matchesSearch = (haystackParts, query) => {
+  if (!query) return true;
+  const hay = haystackParts.filter(Boolean).join(" ").toLowerCase();
+  return hay.includes(query.toLowerCase());
+};
 
-export function PastoralCarePage() {
+export function SupportOrdinancePage() {
   const { role } = useAuth();
-  const access = accessLevel(role, "pastoral_care"); // "full" | "view" (route already blocks null)
+  const access = accessLevel(role, "support_ordinance"); // "full" | "view" (route already blocks null)
   const canEdit = access === "full";
   const [tab, setTab] = useState(TABS[0].key);
 
@@ -32,9 +43,9 @@ export function PastoralCarePage() {
     <div className="fade-in">
       <div className="page-header">
         <div>
-          <div className="eyebrow" style={{ marginBottom: 6 }}>Pastoral Care</div>
-          <h1>Life events, support & evangelism</h1>
-          <p>{canEdit ? "Track weddings, funerals, benevolence, and soul-winning." : "View-only — your role can't log entries here."}</p>
+          <div className="eyebrow" style={{ marginBottom: 6 }}>Support/Ordinance</div>
+          <h1>Support/Ordinance</h1>
+          <p>{canEdit ? "Life events, member support, and ordinance records." : "View-only — your role can't log entries here."}</p>
         </div>
       </div>
 
@@ -48,41 +59,95 @@ export function PastoralCarePage() {
         </div>
       </ScrollX>
 
-      {tab === "life-events" && <LifeEventsSection canEdit={canEdit} />}
-      {tab === "member-support" && <MemberSupportSection canEdit={canEdit} />}
-      {tab === "evangelism" && <EvangelismSection canEdit={canEdit} />}
+      {tab === "life-event" && <LifeEventSection canEdit={canEdit} />}
+      {tab === "support" && <SupportSection canEdit={canEdit} />}
+      {tab === "ordinance" && <OrdinanceSection canEdit={canEdit} />}
     </div>
   );
 }
 
-// ============== Life Events ==============
+// Shared by all three tabs — search + category filter + a year selector
+// copied from Finance's Tithes pattern (FinancePage.jsx's
+// MonthlyPerformanceSection: prev/next chevrons flanking a year badge) —
+// so all three feel like one consistent toolbar rather than three
+// different designs. `.filter-bar` (styles.css) already wraps the
+// search/select children on narrow screens; the year group and Add
+// button wrap as whole units alongside them.
+function SectionToolbar({ search, onSearchChange, searchPlaceholder, filterValue, onFilterChange, filterOptions, year, onPrevYear, onNextYear, addLabel, onAdd }) {
+  return (
+    <div className="row filter-bar" style={{ gap: 10, padding: "14px 18px", flexWrap: "wrap" }}>
+      <div className="search" style={{ flex: 1, maxWidth: "none" }}>
+        <Icon name="search" size={15} />
+        <input placeholder={searchPlaceholder} value={search} onChange={(e) => onSearchChange(e.target.value)} />
+      </div>
+      <select className="select" style={{ width: 190 }} value={filterValue} onChange={(e) => onFilterChange(e.target.value)}>
+        {filterOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+      <div className="row" style={{ gap: 4, flexShrink: 0 }}>
+        <button className="btn btn-icon btn-ghost" onClick={onPrevYear}>
+          <span style={{ transform: "rotate(180deg)", display: "inline-flex" }}><Icon name="chevron" size={14} stroke={2} /></span>
+        </button>
+        <span className="badge">{year}</span>
+        <button className="btn btn-icon btn-ghost" onClick={onNextYear}><Icon name="chevron" size={14} stroke={2} /></button>
+      </div>
+      {onAdd && (
+        <button className="btn btn-primary" onClick={onAdd} style={{ flexShrink: 0 }}>
+          <Icon name="plus" size={15} /> {addLabel}
+        </button>
+      )}
+    </div>
+  );
+}
 
-function LifeEventsSection({ canEdit }) {
+// ============== Life Event ==============
+
+function LifeEventSection({ canEdit }) {
   const { data: events, isLoading, isError, error } = useLifeEvents();
   const deleteEvent = useDeleteLifeEvent();
   const [showAdd, setShowAdd] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("");
+  const [year, setYear] = useState(new Date().getFullYear());
+
+  const filtered = (events ?? []).filter((e) =>
+    yearOf(e.event_date) === year &&
+    (!category || e.category === category) &&
+    matchesSearch([e.names, e.names_child_parents_bereaved, e.venue, e.category], search)
+  );
 
   return (
     <div className="glass card" style={{ padding: 0, overflow: "hidden" }}>
-      <div className="row between" style={{ padding: "16px 18px" }}>
-        <h3 style={{ fontSize: 16 }}>Life events</h3>
-        {canEdit && <button className="btn btn-primary" onClick={() => { setEditing(null); setShowAdd(true); }}><Icon name="plus" size={15} /> Add event</button>}
-      </div>
+      <div style={{ padding: "16px 18px 0" }}><h3 style={{ fontSize: 16 }}>Life Event</h3></div>
+      <SectionToolbar
+        search={search} onSearchChange={setSearch} searchPlaceholder="Search names, venue…"
+        filterValue={category} onFilterChange={setCategory}
+        filterOptions={[{ value: "", label: "All Events" }, ...LIFE_EVENT_CATEGORIES.map((c) => ({ value: c, label: c }))]}
+        year={year} onPrevYear={() => setYear((y) => y - 1)} onNextYear={() => setYear((y) => y + 1)}
+        addLabel="Add Event" onAdd={canEdit ? () => { setEditing(null); setShowAdd(true); } : undefined}
+      />
       {isError && <div className="badge badge-red" style={{ display: "block", margin: "0 18px 14px", padding: "8px 12px" }}>Couldn't load: {error.message}</div>}
       <ScrollX>
         <table className="table">
-          <thead><tr><th>Category</th><th>Date</th><th>Names</th><th>Venue</th><th>Attendance</th><th></th></tr></thead>
+          <thead>
+            <tr>
+              <th>Date</th><th>Life Event</th><th>Names (Child/Couples/Deceased)</th>
+              <th>Names (Child's Parents/Name of Bereaved Member)</th><th>Venue</th><th>Attendance</th><th></th>
+            </tr>
+          </thead>
           <tbody>
-            {isLoading && <tr><td colSpan={6} className="muted" style={{ padding: 20, textAlign: "center" }}>Loading…</td></tr>}
-            {!isLoading && (events ?? []).length === 0 && (
-              <tr><td colSpan={6} className="muted" style={{ padding: 20, textAlign: "center" }}>No life events logged yet.</td></tr>
+            {isLoading && <tr><td colSpan={7} className="muted" style={{ padding: 20, textAlign: "center" }}>Loading…</td></tr>}
+            {!isLoading && filtered.length === 0 && (
+              <tr><td colSpan={7} className="muted" style={{ padding: 20, textAlign: "center" }}>
+                {(events ?? []).length ? "No life events match." : "No life events logged yet."}
+              </td></tr>
             )}
-            {(events ?? []).map((e) => (
+            {filtered.map((e) => (
               <tr key={e.id}>
-                <td><span className="badge badge-blue">{e.category}</span></td>
                 <td className="muted">{fmtDate(e.event_date)}</td>
+                <td><span className="badge badge-blue">{e.category}</span></td>
                 <td style={{ fontWeight: 500 }}>{e.names}</td>
+                <td className="muted">{e.names_child_parents_bereaved || "—"}</td>
                 <td className="muted">{e.venue || "—"}</td>
                 <td>{e.attendance ?? "—"}</td>
                 <td>
@@ -107,6 +172,7 @@ function LifeEventFormModal({ event, onClose }) {
   const [category, setCategory] = useState(event?.category ?? "Naming");
   const [eventDate, setEventDate] = useState(event?.event_date ?? new Date().toISOString().slice(0, 10));
   const [names, setNames] = useState(event?.names ?? "");
+  const [secondaryNames, setSecondaryNames] = useState(event?.names_child_parents_bereaved ?? "");
   const [venue, setVenue] = useState(event?.venue ?? "");
   const [attendance, setAttendance] = useState(event?.attendance ?? "");
   const [error, setError] = useState(null);
@@ -115,8 +181,12 @@ function LifeEventFormModal({ event, onClose }) {
   const saving = createEvent.isPending || updateEvent.isPending;
 
   const onSave = async () => {
-    if (!names.trim()) return setError("Names are required.");
-    const payload = { category, event_date: eventDate, names: names.trim(), venue: venue || null, attendance: attendance === "" ? null : Number(attendance) };
+    if (!names.trim()) return setError("Names (Child/Couples/Deceased) is required.");
+    const payload = {
+      category, event_date: eventDate, names: names.trim(),
+      names_child_parents_bereaved: secondaryNames.trim() || null,
+      venue: venue || null, attendance: attendance === "" ? null : Number(attendance),
+    };
     try {
       if (event) await updateEvent.mutateAsync({ id: event.id, ...payload });
       else await createEvent.mutateAsync(payload);
@@ -130,20 +200,27 @@ function LifeEventFormModal({ event, onClose }) {
     <Modal onClose={onClose}>
       <div className="glass modal-card" style={{ maxWidth: 460, padding: 26 }} onClick={(e) => e.stopPropagation()}>
         <div className="row between" style={{ marginBottom: 14 }}>
-          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 500 }}>{event ? "Edit life event" : "Add life event"}</h2>
+          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 500 }}>{event ? "Edit Life Event" : "Add Life Event"}</h2>
           <button className="btn btn-icon btn-ghost" onClick={onClose}><Icon name="x" size={16} /></button>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div className="grid cols-2" style={{ gap: 12 }}>
             <div className="field">
-              <label>Category</label>
+              <label>Life Event</label>
               <select className="select" value={category} onChange={(e) => setCategory(e.target.value)}>
                 {LIFE_EVENT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div className="field"><label>Date</label><input type="date" className="input" value={eventDate} onChange={(e) => setEventDate(e.target.value)} /></div>
           </div>
-          <div className="field"><label>Names</label><input className="input" placeholder="e.g. Kwame & Ama" value={names} onChange={(e) => setNames(e.target.value)} /></div>
+          <div className="field">
+            <label>Names (Child/Couples/Deceased)</label>
+            <input className="input" placeholder="e.g. Kwame & Ama" value={names} onChange={(e) => setNames(e.target.value)} />
+          </div>
+          <div className="field">
+            <label>Names (Child's Parents/Name of Bereaved Member)</label>
+            <input className="input" placeholder="Optional, depending on the event" value={secondaryNames} onChange={(e) => setSecondaryNames(e.target.value)} />
+          </div>
           <div className="grid cols-2" style={{ gap: 12 }}>
             <div className="field"><label>Venue</label><input className="input" value={venue} onChange={(e) => setVenue(e.target.value)} /></div>
             <div className="field"><label>Attendance</label><input type="number" min="0" className="input" value={attendance} onChange={(e) => setAttendance(e.target.value)} /></div>
@@ -159,30 +236,50 @@ function LifeEventFormModal({ event, onClose }) {
   );
 }
 
-// ============== Member Support ==============
+// ============== Support ==============
 
-function MemberSupportSection({ canEdit }) {
+function SupportSection({ canEdit }) {
   const { data: entries, isLoading, isError, error } = useMemberSupport();
   const deleteEntry = useDeleteMemberSupport();
   const [showAdd, setShowAdd] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [search, setSearch] = useState("");
+  const [supportType, setSupportType] = useState("");
+  const [year, setYear] = useState(new Date().getFullYear());
+
+  // Filter options are the distinct types already used in real records —
+  // support_type has always been free text, no fixed enum, so this is the
+  // actual set configured in the system, not an invented list.
+  const typeOptions = Array.from(new Set((entries ?? []).map((e) => e.support_type).filter(Boolean))).sort();
+
+  const filtered = (entries ?? []).filter((e) =>
+    yearOf(e.support_date) === year &&
+    (!supportType || e.support_type === supportType) &&
+    matchesSearch([e.support_type, e.notes], search)
+  );
 
   return (
     <div className="glass card" style={{ padding: 0, overflow: "hidden" }}>
-      <div className="row between" style={{ padding: "16px 18px" }}>
-        <h3 style={{ fontSize: 16 }}>Member support</h3>
-        {canEdit && <button className="btn btn-primary" onClick={() => { setEditing(null); setShowAdd(true); }}><Icon name="plus" size={15} /> Add entry</button>}
-      </div>
+      <div style={{ padding: "16px 18px 0" }}><h3 style={{ fontSize: 16 }}>Support</h3></div>
+      <SectionToolbar
+        search={search} onSearchChange={setSearch} searchPlaceholder="Search type, notes…"
+        filterValue={supportType} onFilterChange={setSupportType}
+        filterOptions={[{ value: "", label: "All Support Types" }, ...typeOptions.map((t) => ({ value: t, label: t }))]}
+        year={year} onPrevYear={() => setYear((y) => y - 1)} onNextYear={() => setYear((y) => y + 1)}
+        addLabel="Add Entry" onAdd={canEdit ? () => { setEditing(null); setShowAdd(true); } : undefined}
+      />
       {isError && <div className="badge badge-red" style={{ display: "block", margin: "0 18px 14px", padding: "8px 12px" }}>Couldn't load: {error.message}</div>}
       <ScrollX>
         <table className="table">
           <thead><tr><th>Type</th><th>Amount (GHS)</th><th>Date</th><th>Notes</th><th></th></tr></thead>
           <tbody>
             {isLoading && <tr><td colSpan={5} className="muted" style={{ padding: 20, textAlign: "center" }}>Loading…</td></tr>}
-            {!isLoading && (entries ?? []).length === 0 && (
-              <tr><td colSpan={5} className="muted" style={{ padding: 20, textAlign: "center" }}>No support entries logged yet.</td></tr>
+            {!isLoading && filtered.length === 0 && (
+              <tr><td colSpan={5} className="muted" style={{ padding: 20, textAlign: "center" }}>
+                {(entries ?? []).length ? "No support entries match." : "No support entries logged yet."}
+              </td></tr>
             )}
-            {(entries ?? []).map((e) => (
+            {filtered.map((e) => (
               <tr key={e.id}>
                 <td style={{ fontWeight: 500 }}>{e.support_type}</td>
                 <td>{Number(e.amount_ghs).toFixed(2)}</td>
@@ -235,7 +332,7 @@ function MemberSupportFormModal({ entry, onClose }) {
     <Modal onClose={onClose}>
       <div className="glass modal-card" style={{ maxWidth: 460, padding: 26 }} onClick={(e) => e.stopPropagation()}>
         <div className="row between" style={{ marginBottom: 14 }}>
-          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 500 }}>{entry ? "Edit support entry" : "Add support entry"}</h2>
+          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 500 }}>{entry ? "Edit Support Entry" : "Add Support Entry"}</h2>
           <button className="btn btn-icon btn-ghost" onClick={onClose}><Icon name="x" size={16} /></button>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -266,53 +363,88 @@ function MemberSupportFormModal({ entry, onClose }) {
   );
 }
 
-// ============== Evangelism ==============
+// ============== Ordinance (was Evangelism — same data, relabeled) ==============
 
-function EvangelismSection({ canEdit }) {
+const ORDINANCE_TYPES = [
+  { key: "water", label: "Water Baptism" },
+  { key: "holy-spirit", label: "Holy Spirit Baptism" },
+  { key: "souls-won", label: "Souls Won" },
+];
+
+function OrdinanceSection({ canEdit }) {
+  const [search, setSearch] = useState("");
+  const [ordinanceType, setOrdinanceType] = useState("");
+  const [year, setYear] = useState(new Date().getFullYear());
+
+  const showType = (key) => !ordinanceType || ordinanceType === key;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <EvangelismSubTable
-        title="Souls won" canEdit={canEdit}
-        useList={useSoulsWon} useCreate={useCreateSoulWon} useDelete={useDeleteSoulWon}
-        fields={[
-          { key: "name", label: "Name", required: true },
-          { key: "contact", label: "Contact" },
-          { key: "event_date", label: "Date", type: "date", default: () => new Date().toISOString().slice(0, 10) },
-          { key: "brought_by", label: "Brought by" },
-        ]}
-        columns={[["name", "Name"], ["contact", "Contact"], ["event_date", "Date", fmtDate], ["brought_by", "Brought by"]]}
-      />
-      <EvangelismSubTable
-        title="Water baptisms" canEdit={canEdit}
-        useList={useWaterBaptisms} useCreate={useCreateWaterBaptism} useDelete={useDeleteWaterBaptism}
-        fields={[
-          { key: "name", label: "Name", required: true },
-          { key: "baptism_date", label: "Date", type: "date", default: () => new Date().toISOString().slice(0, 10) },
-          { key: "notes", label: "Notes" },
-        ]}
-        columns={[["name", "Name"], ["baptism_date", "Date", fmtDate], ["notes", "Notes"]]}
-      />
-      <EvangelismSubTable
-        title="Holy Spirit baptisms" canEdit={canEdit}
-        useList={useHolySpiritBaptisms} useCreate={useCreateHolySpiritBaptism} useDelete={useDeleteHolySpiritBaptism}
-        fields={[
-          { key: "name", label: "Name", required: true },
-          { key: "baptism_date", label: "Date", type: "date", default: () => new Date().toISOString().slice(0, 10) },
-          { key: "notes", label: "Notes" },
-        ]}
-        columns={[["name", "Name"], ["baptism_date", "Date", fmtDate], ["notes", "Notes"]]}
-      />
+      <div className="glass card" style={{ padding: 0, overflow: "hidden" }}>
+        <div style={{ padding: "16px 18px 0" }}><h3 style={{ fontSize: 16 }}>Ordinance</h3></div>
+        <SectionToolbar
+          search={search} onSearchChange={setSearch} searchPlaceholder="Search names, notes…"
+          filterValue={ordinanceType} onFilterChange={setOrdinanceType}
+          filterOptions={[{ value: "", label: "All Ordinances" }, ...ORDINANCE_TYPES.map((t) => ({ value: t.key, label: t.label }))]}
+          year={year} onPrevYear={() => setYear((y) => y - 1)} onNextYear={() => setYear((y) => y + 1)}
+        />
+      </div>
+
+      {showType("water") && (
+        <OrdinanceSubTable
+          title="Water Baptism" canEdit={canEdit} year={year} search={search} dateKey="baptism_date"
+          useList={useWaterBaptisms} useCreate={useCreateWaterBaptism} useDelete={useDeleteWaterBaptism}
+          fields={[
+            { key: "name", label: "Name", required: true },
+            { key: "baptism_date", label: "Date", type: "date", default: () => new Date().toISOString().slice(0, 10) },
+            { key: "notes", label: "Notes" },
+          ]}
+          columns={[["name", "Name"], ["baptism_date", "Date", fmtDate], ["notes", "Notes"]]}
+        />
+      )}
+      {showType("holy-spirit") && (
+        <OrdinanceSubTable
+          title="Holy Spirit Baptism" canEdit={canEdit} year={year} search={search} dateKey="baptism_date"
+          useList={useHolySpiritBaptisms} useCreate={useCreateHolySpiritBaptism} useDelete={useDeleteHolySpiritBaptism}
+          fields={[
+            { key: "name", label: "Name", required: true },
+            { key: "baptism_date", label: "Date", type: "date", default: () => new Date().toISOString().slice(0, 10) },
+            { key: "notes", label: "Notes" },
+          ]}
+          columns={[["name", "Name"], ["baptism_date", "Date", fmtDate], ["notes", "Notes"]]}
+        />
+      )}
+      {showType("souls-won") && (
+        <OrdinanceSubTable
+          title="Souls Won" canEdit={canEdit} year={year} search={search} dateKey="event_date"
+          useList={useSoulsWon} useCreate={useCreateSoulWon} useDelete={useDeleteSoulWon}
+          fields={[
+            { key: "name", label: "Name", required: true },
+            { key: "contact", label: "Contact" },
+            { key: "event_date", label: "Date", type: "date", default: () => new Date().toISOString().slice(0, 10) },
+            { key: "brought_by", label: "Brought by" },
+          ]}
+          columns={[["name", "Name"], ["contact", "Contact"], ["event_date", "Date", fmtDate], ["brought_by", "Brought by"]]}
+        />
+      )}
     </div>
   );
 }
 
-// Small generic form+list for the three near-identical Evangelism tables —
-// each only differs in its fields/columns, not its behavior.
-function EvangelismSubTable({ title, canEdit, useList, useCreate, useDelete, fields, columns }) {
+// Small generic form+list for the three near-identical Ordinance
+// sub-tables — each only differs in its fields/columns, not its
+// behavior. year/search come from the shared toolbar above and filter
+// this sub-table's own rows by its own date column.
+function OrdinanceSubTable({ title, canEdit, useList, useCreate, useDelete, fields, columns, dateKey, year, search }) {
   const { data: rows, isLoading } = useList();
   const createRow = useCreate();
   const deleteRow = useDelete();
   const [showAdd, setShowAdd] = useState(false);
+
+  const filtered = (rows ?? []).filter((r) =>
+    yearOf(r[dateKey]) === year &&
+    matchesSearch(columns.map(([key]) => r[key]), search)
+  );
 
   return (
     <div className="glass card" style={{ padding: 0, overflow: "hidden" }}>
@@ -325,10 +457,12 @@ function EvangelismSubTable({ title, canEdit, useList, useCreate, useDelete, fie
           <thead><tr>{columns.map(([key, label]) => <th key={key}>{label}</th>)}{canEdit && <th></th>}</tr></thead>
           <tbody>
             {isLoading && <tr><td colSpan={columns.length + 1} className="muted" style={{ padding: 16, textAlign: "center" }}>Loading…</td></tr>}
-            {!isLoading && (rows ?? []).length === 0 && (
-              <tr><td colSpan={columns.length + 1} className="muted" style={{ padding: 16, textAlign: "center" }}>None logged yet.</td></tr>
+            {!isLoading && filtered.length === 0 && (
+              <tr><td colSpan={columns.length + 1} className="muted" style={{ padding: 16, textAlign: "center" }}>
+                {(rows ?? []).length ? "None match." : "None logged yet."}
+              </td></tr>
             )}
-            {(rows ?? []).map((r) => (
+            {filtered.map((r) => (
               <tr key={r.id}>
                 {columns.map(([key, , fmt]) => <td key={key} className={key.includes("date") ? "muted" : ""}>{fmt ? fmt(r[key]) : (r[key] || "—")}</td>)}
                 {canEdit && (
@@ -341,12 +475,12 @@ function EvangelismSubTable({ title, canEdit, useList, useCreate, useDelete, fie
           </tbody>
         </table>
       </ScrollX>
-      {showAdd && <EvangelismFormModal title={title} fields={fields} onSave={(row) => createRow.mutateAsync(row)} onClose={() => setShowAdd(false)} />}
+      {showAdd && <OrdinanceFormModal title={title} fields={fields} onSave={(row) => createRow.mutateAsync(row)} onClose={() => setShowAdd(false)} />}
     </div>
   );
 }
 
-function EvangelismFormModal({ title, fields, onSave, onClose }) {
+function OrdinanceFormModal({ title, fields, onSave, onClose }) {
   const [values, setValues] = useState(() => Object.fromEntries(fields.map((f) => [f.key, f.default ? f.default() : ""])));
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);

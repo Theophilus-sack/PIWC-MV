@@ -16,7 +16,7 @@ import { MessagesPage } from "./pages/Messages/MessagesPage.jsx";
 import { SermonPrepPage } from "./pages/SermonPrep/SermonPrepPage.jsx";
 import { AuditLogsPage } from "./pages/AuditLogs/AuditLogsPage.jsx";
 import { AdminPage } from "./pages/Admin/AdminPage.jsx";
-import { PastoralCarePage } from "./pages/PastoralCare/PastoralCarePage.jsx";
+import { SupportOrdinancePage } from "./pages/SupportOrdinance/SupportOrdinancePage.jsx";
 import { EventsPage } from "./pages/Events/EventsPage.jsx";
 import { InventoryPage } from "./pages/Inventory/InventoryPage.jsx";
 import { ReportsPage } from "./pages/Reports/ReportsPage.jsx";
@@ -50,7 +50,7 @@ export default function App() {
         <Route path="/sermon-prep" element={<ProtectedRoute module="sermon_prep"><SermonPrepPage /></ProtectedRoute>} />
         <Route path="/audit-logs" element={<ProtectedRoute module="audit_logs"><AuditLogsPage /></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute module="admin"><AdminPage /></ProtectedRoute>} />
-        <Route path="/pastoral-care" element={<ProtectedRoute module="pastoral_care"><PastoralCarePage /></ProtectedRoute>} />
+        <Route path="/support-ordinance" element={<ProtectedRoute module="support_ordinance"><SupportOrdinancePage /></ProtectedRoute>} />
         <Route path="/events" element={<ProtectedRoute module="events"><EventsPage /></ProtectedRoute>} />
         <Route path="/inventory" element={<ProtectedRoute module="inventory"><InventoryPage /></ProtectedRoute>} />
         <Route path="/reports" element={<ProtectedRoute module="reports"><ReportsPage /></ProtectedRoute>} />

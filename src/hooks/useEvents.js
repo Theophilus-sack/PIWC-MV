@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabaseClient.js";
 
-// Same generic CRUD factory as usePastoralCare.js — five tables here too,
+// Same generic CRUD factory as useSupportOrdinance.js — five tables here too,
 // same list/create/update/delete shape. ministry_id scoping (where a
 // table has it) is just a normal column on the row the caller passes in;
 // RLS (0013_events.sql) is what actually enforces who can set it to what.
