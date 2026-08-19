@@ -403,7 +403,7 @@ function DesignatedFundModal({ fund, onClose }) {
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div className="field"><label>Fund name</label><input className="input" value={form.fund_name} onChange={(e) => set({ fund_name: e.target.value })} /></div>
-          <div className="field"><label>District</label><input className="input" value={form.district} onChange={(e) => set({ district: e.target.value })} /></div>
+          <div className="field"><label>Date</label><input className="input" value={form.district} onChange={(e) => set({ district: e.target.value })} /></div>
           <div className="field"><label>Prior year actual (GHS)</label><input type="number" step="0.01" className="input" value={form.actual_prior_year_ghs} onChange={(e) => set({ actual_prior_year_ghs: Number(e.target.value) })} /></div>
           <div className="grid cols-2" style={{ gap: 12 }}>
             <div className="field"><label>Budget this year (GHS)</label><input type="number" step="0.01" className="input" value={form.budget_current_year_ghs} onChange={(e) => set({ budget_current_year_ghs: Number(e.target.value) })} /></div>

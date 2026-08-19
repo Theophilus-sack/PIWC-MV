@@ -28,7 +28,7 @@ export function GroupsPage() {
       <div className="page-header">
         <div>
           <div className="eyebrow" style={{ marginBottom: 6 }}>Ministries</div>
-          <h1>Groups/Ministries</h1>
+          <h1>Departments/Ministries</h1>
           <p>{isMinistryLeader ? "Manage your ministry's roster." : "Browse ministries and their rosters, by service."}</p>
         </div>
         {canCreateMinistry && (
