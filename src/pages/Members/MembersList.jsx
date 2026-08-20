@@ -9,6 +9,7 @@ import { useAuth } from "../../lib/auth.jsx";
 import { accessLevel } from "../../lib/rbac.js";
 import { AddMemberModal } from "./AddMemberModal.jsx";
 import { EditMemberModal } from "./EditMemberModal.jsx";
+import { CsvImportModal, ExportCsvModal } from "../../components/CsvImportExport.jsx";
 
 const PAGE_SIZE = 20;
 
@@ -26,6 +27,8 @@ export function MembersList() {
   const [page, setPage] = useState(0);
   const [showAdd, setShowAdd] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
+  const [showImport, setShowImport] = useState(false);
+  const [showExport, setShowExport] = useState(false);
 
   const { data: ministries } = useMinistries();
   const { data, isLoading, isError, error } = useMembers({ page, pageSize: PAGE_SIZE, search: q, ministryId, assembly, sort });
@@ -54,7 +57,9 @@ export function MembersList() {
           <p>Search, filter, and manage everyone in the church.</p>
         </div>
         {canAdd && (
-          <div className="row" style={{ gap: 8 }}>
+          <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+            <button className="btn btn-ghost" onClick={() => setShowImport(true)}><Icon name="upload" size={14} /> Import CSV</button>
+            <button className="btn btn-ghost" onClick={() => setShowExport(true)}><Icon name="download" size={14} /> Export CSV</button>
             <button className="btn btn-primary" onClick={() => setShowAdd(true)}><Icon name="plus" size={15} /> Add member</button>
           </div>
         )}
@@ -164,6 +169,20 @@ export function MembersList() {
 
       {showAdd && <AddMemberModal onClose={() => setShowAdd(false)} />}
       {editingMember && <EditMemberModal member={editingMember} onClose={() => setEditingMember(null)} />}
+      {showImport && (
+        <CsvImportModal allowedTargets={["members"]} ministries={ministries} onClose={() => setShowImport(false)} />
+      )}
+      {showExport && (
+        <ExportCsvModal
+          allowedTargets={["members"]}
+          filteredMembers={rows}
+          filteredManualContacts={[]}
+          selectedMembers={[]}
+          selectedManualContacts={[]}
+          allowSelected={false}
+          onClose={() => setShowExport(false)}
+        />
+      )}
     </div>
   );
 }
