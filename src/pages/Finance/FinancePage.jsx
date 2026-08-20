@@ -299,22 +299,13 @@ function DesignatedFundsSection({ canEdit }) {
   const deleteFund = useDeleteDesignatedFund();
   const [showAdd, setShowAdd] = useState(false);
   const [editingFund, setEditingFund] = useState(null);
-  const [year, setYear] = useState(new Date().getFullYear());
-
-  // Funds with no date_held yet (pre-migration rows, or just not entered)
-  // stay visible regardless of the selected year — filtering them out
-  // would silently hide existing data rather than just not matching it.
-  const filtered = (funds ?? []).filter((f) => !f.date_held || yearOf(f.date_held) === year);
 
   return (
     <>
     <div className="glass card" style={{ padding: 0, overflow: "hidden" }}>
-      <div className="row between" style={{ padding: "16px 18px", flexWrap: "wrap", gap: 10 }}>
+      <div className="row between" style={{ padding: "16px 18px" }}>
         <h3 style={{ fontSize: 16 }}>Designated funds</h3>
-        <div className="row" style={{ gap: 10 }}>
-          <YearNav year={year} onPrev={() => setYear((y) => y - 1)} onNext={() => setYear((y) => y + 1)} />
-          {canEdit && <button className="btn btn-primary" onClick={() => setShowAdd(true)}><Icon name="plus" size={15} /> Add fund</button>}
-        </div>
+        {canEdit && <button className="btn btn-primary" onClick={() => setShowAdd(true)}><Icon name="plus" size={15} /> Add fund</button>}
       </div>
       {isError && (
         <div className="badge badge-red" style={{ display: "block", margin: "0 18px 14px", padding: "8px 12px" }}>
@@ -336,15 +327,13 @@ function DesignatedFundsSection({ canEdit }) {
         </thead>
         <tbody>
           {isLoading && <tr><td colSpan={7} className="muted" style={{ padding: 20, textAlign: "center" }}>Loading…</td></tr>}
-          {!isLoading && filtered.length === 0 && (
-            <tr><td colSpan={7} className="muted" style={{ padding: 20, textAlign: "center" }}>
-              {(funds ?? []).length ? "No designated funds match this year." : "No designated funds yet."}
-            </td></tr>
+          {!isLoading && (funds ?? []).length === 0 && (
+            <tr><td colSpan={7} className="muted" style={{ padding: 20, textAlign: "center" }}>No designated funds yet.</td></tr>
           )}
-          {filtered.map((f) => (
+          {(funds ?? []).map((f) => (
             <tr key={f.id}>
               <td style={{ fontWeight: 500 }}>{f.fund_name}</td>
-              <td className="muted">{formatDate(f.date_held)}</td>
+              <td className="muted">{f.district || "—"}</td>
               <td>{formatGHS(f.actual_prior_year_ghs)}</td>
               <td>{formatGHS(f.budget_current_year_ghs)}</td>
               <td>{formatGHS(f.actual_current_year_ghs)}</td>
@@ -379,7 +368,7 @@ function DesignatedFundsSection({ canEdit }) {
 function DesignatedFundModal({ fund, onClose }) {
   const [form, setForm] = useState({
     fund_name: fund?.fund_name ?? "",
-    date_held: fund?.date_held ?? "",
+    district: fund?.district ?? "",
     actual_prior_year_ghs: fund?.actual_prior_year_ghs ?? 0,
     budget_current_year_ghs: fund?.budget_current_year_ghs ?? 0,
     actual_current_year_ghs: fund?.actual_current_year_ghs ?? 0,
@@ -393,10 +382,9 @@ function DesignatedFundModal({ fund, onClose }) {
 
   const onSave = async () => {
     if (!form.fund_name.trim()) return setError("Fund name is required.");
-    const payload = { ...form, date_held: form.date_held || null };
     try {
-      if (fund) await update.mutateAsync({ id: fund.id, ...payload });
-      else await create.mutateAsync(payload);
+      if (fund) await update.mutateAsync({ id: fund.id, ...form });
+      else await create.mutateAsync(form);
       onClose();
     } catch (err) {
       setError(err.message);
@@ -412,7 +400,7 @@ function DesignatedFundModal({ fund, onClose }) {
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div className="field"><label>Fund name</label><input className="input" value={form.fund_name} onChange={(e) => set({ fund_name: e.target.value })} /></div>
-          <div className="field"><label>Date held</label><input type="date" className="input" value={form.date_held} onChange={(e) => set({ date_held: e.target.value })} /></div>
+          <div className="field"><label>Date Held</label><input className="input" value={form.district} onChange={(e) => set({ district: e.target.value })} /></div>
           <div className="field"><label>Prior year actual (GHS)</label><input type="number" step="0.01" className="input" value={form.actual_prior_year_ghs} onChange={(e) => set({ actual_prior_year_ghs: Number(e.target.value) })} /></div>
           <div className="grid cols-2" style={{ gap: 12 }}>
             <div className="field"><label>Budget this year (GHS)</label><input type="number" step="0.01" className="input" value={form.budget_current_year_ghs} onChange={(e) => set({ budget_current_year_ghs: Number(e.target.value) })} /></div>

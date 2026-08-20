@@ -18,15 +18,10 @@ export function Topbar({ theme, onToggleTheme, onMenuClick }) {
       <button className="btn btn-icon btn-ghost menu-toggle" onClick={onMenuClick} aria-label="Open menu">
         <Icon name="menu" size={17} />
       </button>
-      <div className="row breadcrumb" style={{ gap: 10 }}>
+      <div className="row breadcrumb" style={{ gap: 10, flex: 1 }}>
         <span className="muted" style={{ fontSize: 12.5 }}>PIWC Mountain View</span>
         <span className="faint">/</span>
         <span style={{ fontSize: 13, fontWeight: 500 }}>{title}</span>
-      </div>
-      <div className="search">
-        <Icon name="search" size={15} />
-        <input placeholder="Search members, departments, ministries…" />
-        <kbd>⌘K</kbd>
       </div>
       <div className="row" style={{ gap: 6 }}>
         <button className="btn btn-icon btn-ghost" onClick={onToggleTheme} title="Toggle theme">

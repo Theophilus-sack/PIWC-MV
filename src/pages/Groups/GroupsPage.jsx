@@ -293,7 +293,7 @@ function MinistryFormModal({ ministry, onClose }) {
             <select className="select" value={assembly} onChange={(e) => setAssembly(e.target.value)}>
               <option value="English">English Service</option>
               <option value="Twi">Twi Service</option>
-              <option value="Both">Both Services</option>
+              <option value="Both">Departments</option>
             </select>
           </div>
         </div>

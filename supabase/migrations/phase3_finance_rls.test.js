@@ -82,14 +82,8 @@ describe("Phase 3 Finance RLS policies (static)", () => {
     });
   });
 
-  describe("designated_funds.date_held (0020) — additive only", () => {
-    it("adds the new column via ADD COLUMN", () => {
-      expect(sql).toMatch(/alter table designated_funds add column date_held date/);
-    });
-
-    it("never renames or drops designated_funds.district — existing historical data must stay intact", () => {
-      expect(sql).not.toMatch(/alter table designated_funds\s+rename column district/i);
-      expect(sql).not.toMatch(/alter table designated_funds\s+drop column district\b/i);
-    });
+  it("designated_funds.district is never renamed or dropped — historical data must stay intact", () => {
+    expect(sql).not.toMatch(/alter table designated_funds\s+rename column district/i);
+    expect(sql).not.toMatch(/alter table designated_funds\s+drop column district\b/i);
   });
 });

@@ -337,8 +337,8 @@ function SendTab({ role, profile, access, config, prefillBody, onConsumePrefill 
           <div className="badge badge-blue" style={{ alignSelf: "flex-start" }}>Sending to: General (all members)</div>
         )}
 
-        <div className="search" style={{ maxWidth: "none" }}>
-          <Icon name="search" size={15} />
+        <div className="search" style={{ maxWidth: "none", height: 34, padding: "0 10px" }}>
+          <Icon name="search" size={14} />
           <input placeholder="Search members & contacts…" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
 

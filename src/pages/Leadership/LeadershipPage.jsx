@@ -164,7 +164,7 @@ function PresbyterModal({ presbyter, onClose }) {
           <select className="select" value={form.assembly} onChange={(e) => setForm({ ...form, assembly: e.target.value })}>
             <option value="English">English Service</option>
             <option value="Twi">Twi Service</option>
-            <option value="Both">Both Services</option>
+            <option value="Both">Departments</option>
           </select>
         </div>
       </div>

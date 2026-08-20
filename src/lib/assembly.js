@@ -4,7 +4,7 @@
 export const ASSEMBLY_SECTIONS = [
   { key: "English", label: "English Service", badgeClass: "badge-blue" },
   { key: "Twi", label: "Twi Service", badgeClass: "badge-gold" },
-  { key: "Both", label: "Both Services", badgeClass: "" },
+  { key: "Both", label: "Departments", badgeClass: "" },
   { key: null, label: "Unassigned", badgeClass: "" },
 ];
 
