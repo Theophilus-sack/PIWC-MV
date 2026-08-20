@@ -110,6 +110,47 @@ export function useUpdateMember() {
   });
 }
 
+// Lightweight, unfiltered — CSV import's duplicate-detection set. members
+// has no unique constraint on contact (unlike manual_contacts.phone), so
+// this is a client-side pre-check rather than something the DB enforces.
+export function useAllMemberContacts() {
+  return useQuery({
+    queryKey: ["members", "all-contacts"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("members").select("id, contact").not("contact", "is", null);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+// Bulk variant for CSV import — one insert per batch, same shape as
+// useBulkCreateManualContacts. Each row may carry a ministryId (resolved
+// client-side in lib/importTargets.js from a free-text "ministry" column);
+// insert() with .select() returns rows in the same order they were
+// given, so the ministry_members rows can be built by matching index
+// rather than a second round-trip per member.
+export function useBulkCreateMembers() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (members) => {
+      const rows = members.map(({ ministryId, ...m }) => m);
+      const { data, error } = await supabase.from("members").insert(rows).select("id");
+      if (error) throw error;
+
+      const ministryRows = members
+        .map((m, i) => (m.ministryId ? { ministry_id: m.ministryId, member_id: data[i].id } : null))
+        .filter(Boolean);
+      if (ministryRows.length) {
+        const { error: mmError } = await supabase.from("ministry_members").insert(ministryRows);
+        if (mmError) throw mmError;
+      }
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["members"] }),
+  });
+}
+
 export function useDeleteMember() {
   const queryClient = useQueryClient();
   return useMutation({

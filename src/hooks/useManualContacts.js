@@ -6,6 +6,21 @@ import { normalizeGhanaPhone } from "../lib/sms.js";
 // directory — deliberately a separate table (manual_contacts), not
 // duplicated member data. See 0010_messaging_extended.sql.
 
+// Lightweight, unfiltered — used by the CSV import modal for duplicate
+// detection, independent of whatever search text is currently typed into
+// the page's own contact search box (useManualContacts({search}) above
+// only returns what's currently filtered into view).
+export function useAllManualContactPhones() {
+  return useQuery({
+    queryKey: ["manual-contacts", "all-phones"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("manual_contacts").select("id, phone");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
 export function useManualContacts({ search = "" } = {}) {
   return useQuery({
     queryKey: ["manual-contacts", search],
