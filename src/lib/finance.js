@@ -12,6 +12,10 @@ export function formatGHS(amount) {
   return GHS_FORMATTER.format(Number(amount));
 }
 
+export function formatDate(d) {
+  return d ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+}
+
 export const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",

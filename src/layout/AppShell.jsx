@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { Sidebar } from "./Sidebar.jsx";
 import { Topbar } from "./Topbar.jsx";
+import { SessionTimeoutWatcher } from "../components/SessionTimeoutWatcher.jsx";
 
 // Ported from app.jsx's top-level <div className="app"> + ambient/grain
 // decoration. Theme now persists to localStorage instead of the design
@@ -24,6 +25,7 @@ export function AppShell() {
 
   return (
     <>
+      <SessionTimeoutWatcher />
       <div className="ambient"><div className="orb" /></div>
       <div className="grain" />
       <div className="app">

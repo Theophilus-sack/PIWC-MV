@@ -68,4 +68,28 @@ describe("Phase 3 Finance RLS policies (static)", () => {
       expect(body).not.toContain("'comms_media'");
     });
   }
+
+  describe("tithe_and_mo Request Form fields (0019) — additive only", () => {
+    it("adds receiver_name, items_required, approved_by via ADD COLUMN", () => {
+      expect(sql).toMatch(/alter table tithe_and_mo add column receiver_name text/);
+      expect(sql).toMatch(/alter table tithe_and_mo add column items_required text/);
+      expect(sql).toMatch(/alter table tithe_and_mo add column approved_by text/);
+    });
+
+    it("never renames or drops an existing tithe_and_mo column", () => {
+      expect(sql).not.toMatch(/alter table tithe_and_mo\s+rename column/i);
+      expect(sql).not.toMatch(/alter table tithe_and_mo\s+drop column/i);
+    });
+  });
+
+  describe("designated_funds.date_held (0020) — additive only", () => {
+    it("adds the new column via ADD COLUMN", () => {
+      expect(sql).toMatch(/alter table designated_funds add column date_held date/);
+    });
+
+    it("never renames or drops designated_funds.district — existing historical data must stay intact", () => {
+      expect(sql).not.toMatch(/alter table designated_funds\s+rename column district/i);
+      expect(sql).not.toMatch(/alter table designated_funds\s+drop column district\b/i);
+    });
+  });
 });

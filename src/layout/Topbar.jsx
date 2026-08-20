@@ -25,7 +25,7 @@ export function Topbar({ theme, onToggleTheme, onMenuClick }) {
       </div>
       <div className="search">
         <Icon name="search" size={15} />
-        <input placeholder="Search members, services, ministries…" />
+        <input placeholder="Search members, departments, ministries…" />
         <kbd>⌘K</kbd>
       </div>
       <div className="row" style={{ gap: 6 }}>

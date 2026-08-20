@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Icon } from "../../components/Icon.jsx";
 import { Modal } from "../../components/Modal.jsx";
 import { ScrollX } from "../../components/ScrollX.jsx";
+import { YearNav } from "../../components/YearNav.jsx";
 import { useAuth } from "../../lib/auth.jsx";
 import { accessLevel } from "../../lib/rbac.js";
 import { useMembers } from "../../hooks/useMembers.js";
@@ -83,13 +84,7 @@ function SectionToolbar({ search, onSearchChange, searchPlaceholder, filterValue
       <select className="select" style={{ width: 190 }} value={filterValue} onChange={(e) => onFilterChange(e.target.value)}>
         {filterOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
-      <div className="row" style={{ gap: 4, flexShrink: 0 }}>
-        <button className="btn btn-icon btn-ghost" onClick={onPrevYear}>
-          <span style={{ transform: "rotate(180deg)", display: "inline-flex" }}><Icon name="chevron" size={14} stroke={2} /></span>
-        </button>
-        <span className="badge">{year}</span>
-        <button className="btn btn-icon btn-ghost" onClick={onNextYear}><Icon name="chevron" size={14} stroke={2} /></button>
-      </div>
+      <YearNav year={year} onPrev={onPrevYear} onNext={onNextYear} style={{ gap: 4, flexShrink: 0 }} />
       {onAdd && (
         <button className="btn btn-primary" onClick={onAdd} style={{ flexShrink: 0 }}>
           <Icon name="plus" size={15} /> {addLabel}

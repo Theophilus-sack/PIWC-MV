@@ -89,11 +89,15 @@ export function useDeleteDesignatedFund() {
   });
 }
 
-// ---------- District accounts (tithe_and_mo — placeholder shape) ----------
+// ---------- Request Form (tithe_and_mo — was "District Accounts") ----------
+// Table name unchanged internally (0019_request_form.sql extends it
+// additively rather than renaming) — only the user-facing shape/labels
+// changed. entry_date/amount_ghs/notes are reused as Request
+// Date/Amount/Notes; receiver_name/items_required/approved_by are new.
 
-export function useDistrictAccounts() {
+export function useRequestFormEntries() {
   return useQuery({
-    queryKey: ["district-accounts"],
+    queryKey: ["request-form-entries"],
     queryFn: async () => {
       const { data, error } = await supabase.from("tithe_and_mo").select("*").order("entry_date", { ascending: false });
       if (error) throw error;
@@ -102,25 +106,36 @@ export function useDistrictAccounts() {
   });
 }
 
-export function useCreateDistrictAccount() {
+export function useCreateRequestFormEntry() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (entry) => {
       const { error } = await supabase.from("tithe_and_mo").insert(entry);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["district-accounts"] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["request-form-entries"] }),
   });
 }
 
-export function useDeleteDistrictAccount() {
+export function useUpdateRequestFormEntry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...patch }) => {
+      const { error } = await supabase.from("tithe_and_mo").update(patch).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["request-form-entries"] }),
+  });
+}
+
+export function useDeleteRequestFormEntry() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id) => {
       const { error } = await supabase.from("tithe_and_mo").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["district-accounts"] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["request-form-entries"] }),
   });
 }
 

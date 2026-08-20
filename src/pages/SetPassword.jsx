@@ -1,15 +1,17 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth.jsx";
 import { supabase } from "../lib/supabaseClient.js";
 
-// Where an invite email's link lands (see useInviteUser's redirectTo).
-// Supabase's client auto-detects the access_token in the URL hash and
-// establishes a session before this component even mounts — but an
-// invited account has no password yet, so this page's only job is to get
-// one set via auth.updateUser() before letting them into the app proper.
+// Where an invite email's link lands (see useInviteUser's redirectTo) —
+// and, now, also where a "forgot password" reset link lands (Login.jsx's
+// ForgotPasswordCard). Supabase's client auto-detects the access_token in
+// the URL hash and establishes a session before this component even
+// mounts, for both flows identically — the only difference is which
+// auth event fired (PASSWORD_RECOVERY for a reset link vs. a plain
+// sign-in event for an invite), which just changes the copy below.
 // Public route, same as Login — reachable regardless of auth state,
-// because a fresh invite session isn't "authenticated enough" yet.
+// because a fresh invite/recovery session isn't "authenticated enough" yet.
 export function SetPassword() {
   const { session, loading } = useAuth();
   const navigate = useNavigate();
@@ -17,6 +19,14 @@ export function SetPassword() {
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [isRecovery, setIsRecovery] = useState(false);
+
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") setIsRecovery(true);
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -52,19 +62,21 @@ export function SetPassword() {
           </div>
 
           {loading ? (
-            <p className="muted">Checking your invite…</p>
+            <p className="muted">{isRecovery ? "Checking your reset link…" : "Checking your invite…"}</p>
           ) : !session ? (
             <>
               <h1>Link expired</h1>
               <p className="muted" style={{ fontSize: 14, marginTop: 4 }}>
-                This invite link is no longer valid — invite links expire after a while. Ask your Super Admin or Pastor to send a new one from the Admin page.
+                {isRecovery
+                  ? "This reset link is no longer valid — reset links expire after a while. Request a new one from the Login page."
+                  : "This invite link is no longer valid — invite links expire after a while. Ask your Super Admin or Pastor to send a new one from the Admin page."}
               </p>
             </>
           ) : (
             <>
-              <h1>Set your password</h1>
+              <h1>{isRecovery ? "Reset your password" : "Set your password"}</h1>
               <p className="muted" style={{ fontSize: 14, marginTop: 4, marginBottom: 22 }}>
-                Choose a password to finish setting up your account.
+                {isRecovery ? "Choose a new password for your account." : "Choose a password to finish setting up your account."}
               </p>
               <form onSubmit={onSubmit}>
                 <div className="field" style={{ marginBottom: 12 }}>
