@@ -334,11 +334,11 @@ function SendTab({ role, profile, access, config, prefillBody, onConsumePrefill 
           <div className="badge badge-blue" style={{ alignSelf: "flex-start" }}>Sending to: General (all members)</div>
         )}
 
-        {/* Explicit height/padding here rather than relying on the shared
-            .search default — self-contained so this box's size can't drift
-            if that class is ever touched for some other page later. */}
-        <div className="search" style={{ maxWidth: "none", height: 46, padding: "0 12px" }}>
-          <Icon name="search" size={15} />
+        {/* No per-instance size override — uses the shared .search class
+            exactly as-is, identical to Members' search box, so there's
+            nothing instance-specific left to drift out of sync. */}
+        <div className="search" style={{ maxWidth: "none" }}>
+          <Icon name="search" size={16} />
           <input placeholder="Search members & contacts…" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
 
