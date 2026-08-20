@@ -299,13 +299,22 @@ function DesignatedFundsSection({ canEdit }) {
   const deleteFund = useDeleteDesignatedFund();
   const [showAdd, setShowAdd] = useState(false);
   const [editingFund, setEditingFund] = useState(null);
+  const [year, setYear] = useState(new Date().getFullYear());
+
+  // "Date Held" (district) is free text, not a real date, so it can't
+  // drive a year filter — created_at is the one genuine, always-populated
+  // date every fund actually has, so that's what the year control filters.
+  const filtered = (funds ?? []).filter((f) => yearOf(f.created_at) === year);
 
   return (
     <>
     <div className="glass card" style={{ padding: 0, overflow: "hidden" }}>
-      <div className="row between" style={{ padding: "16px 18px" }}>
+      <div className="row between" style={{ padding: "16px 18px", flexWrap: "wrap", gap: 10 }}>
         <h3 style={{ fontSize: 16 }}>Designated funds</h3>
-        {canEdit && <button className="btn btn-primary" onClick={() => setShowAdd(true)}><Icon name="plus" size={15} /> Add fund</button>}
+        <div className="row" style={{ gap: 10 }}>
+          <YearNav year={year} onPrev={() => setYear((y) => y - 1)} onNext={() => setYear((y) => y + 1)} />
+          {canEdit && <button className="btn btn-primary" onClick={() => setShowAdd(true)}><Icon name="plus" size={15} /> Add fund</button>}
+        </div>
       </div>
       {isError && (
         <div className="badge badge-red" style={{ display: "block", margin: "0 18px 14px", padding: "8px 12px" }}>
@@ -327,10 +336,12 @@ function DesignatedFundsSection({ canEdit }) {
         </thead>
         <tbody>
           {isLoading && <tr><td colSpan={7} className="muted" style={{ padding: 20, textAlign: "center" }}>Loading…</td></tr>}
-          {!isLoading && (funds ?? []).length === 0 && (
-            <tr><td colSpan={7} className="muted" style={{ padding: 20, textAlign: "center" }}>No designated funds yet.</td></tr>
+          {!isLoading && filtered.length === 0 && (
+            <tr><td colSpan={7} className="muted" style={{ padding: 20, textAlign: "center" }}>
+              {(funds ?? []).length ? "No designated funds match this year." : "No designated funds yet."}
+            </td></tr>
           )}
-          {(funds ?? []).map((f) => (
+          {filtered.map((f) => (
             <tr key={f.id}>
               <td style={{ fontWeight: 500 }}>{f.fund_name}</td>
               <td className="muted">{f.district || "—"}</td>
