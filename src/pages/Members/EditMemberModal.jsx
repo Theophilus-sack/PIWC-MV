@@ -17,6 +17,7 @@ export function EditMemberModal({ member, onClose }) {
   const [form, setForm] = useState({
     name: member.name ?? "",
     contact: member.contact ?? "",
+    email: member.email ?? "",
     gender: member.gender ?? "Female",
     residence: member.residence ?? "",
     preferred_assembly: member.preferred_assembly ?? "English",
@@ -27,6 +28,7 @@ export function EditMemberModal({ member, onClose }) {
     nationality: member.nationality ?? "Ghana",
     marital_status: member.marital_status ?? "",
     whatsapp_number: member.whatsapp_number ?? "",
+    skills_talents: member.skills_talents ?? "",
     educational_professional_background: member.educational_professional_background ?? "",
     educational_institution: member.educational_institution ?? "",
     workplace_name: member.workplace_name ?? "",
@@ -65,8 +67,10 @@ export function EditMemberModal({ member, onClose }) {
         ...form,
         date_of_birth: form.date_of_birth || null,
         visiting_from: form.visiting_from || null,
+        email: form.email || null,
         marital_status: form.marital_status || null,
         whatsapp_number: form.whatsapp_number || null,
+        skills_talents: form.skills_talents || null,
         educational_professional_background: form.educational_professional_background || null,
         educational_institution: form.educational_institution || null,
         workplace_name: form.workplace_name || null,
@@ -124,13 +128,17 @@ export function EditMemberModal({ member, onClose }) {
           </div>
           <div className="grid cols-2" style={{ gap: 12 }}>
             <div className="field">
+              <label>Email <span className="faint">(optional)</span></label>
+              <input type="email" className="input" value={form.email} onChange={(e) => set({ email: e.target.value })} />
+            </div>
+            <div className="field">
               <label>Date of birth <span className="faint">(optional)</span></label>
               <input type="date" className="input" value={form.date_of_birth} onChange={(e) => set({ date_of_birth: e.target.value })} />
             </div>
-            <div className="field">
-              <label>Residence</label>
-              <input className="input" value={form.residence} onChange={(e) => set({ residence: e.target.value })} />
-            </div>
+          </div>
+          <div className="field">
+            <label>Residence</label>
+            <input className="input" value={form.residence} onChange={(e) => set({ residence: e.target.value })} />
           </div>
           <div className="grid cols-2" style={{ gap: 12 }}>
             <div className="field">
@@ -190,6 +198,10 @@ export function EditMemberModal({ member, onClose }) {
           <div className="field">
             <label>Educational/professional background <span className="faint">(optional)</span></label>
             <textarea className="textarea" rows={2} value={form.educational_professional_background} onChange={(e) => set({ educational_professional_background: e.target.value })} />
+          </div>
+          <div className="field">
+            <label>Skills / talents <span className="faint">(optional)</span></label>
+            <textarea className="textarea" rows={2} value={form.skills_talents} onChange={(e) => set({ skills_talents: e.target.value })} />
           </div>
 
           <div className="grid cols-2" style={{ gap: 12 }}>

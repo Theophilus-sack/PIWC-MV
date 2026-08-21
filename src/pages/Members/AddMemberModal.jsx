@@ -10,10 +10,10 @@ import { COUNTRIES } from "../../lib/countries.js";
 const MARITAL_STATUSES = ["Single", "Married", "Divorced", "Widowed", "Engaged", "Separated"];
 
 const emptyForm = {
-  name: "", contact: "", gender: "Female", residence: "",
+  name: "", contact: "", email: "", gender: "Female", residence: "",
   preferred_assembly: "English", date_of_birth: "",
   date_joined: new Date().toISOString().slice(0, 10),
-  nationality: "Ghana", marital_status: "", whatsapp_number: "",
+  nationality: "Ghana", marital_status: "", whatsapp_number: "", skills_talents: "",
   educational_professional_background: "", educational_institution: "", workplace_name: "",
 };
 
@@ -56,8 +56,10 @@ export function AddMemberModal({ onClose }) {
       status: isFirstTimer ? intent : "stay",
       visiting_from: isFirstTimer ? form.visiting_from || null : null,
       date_of_birth: form.date_of_birth || null,
+      email: form.email || null,
       marital_status: form.marital_status || null,
       whatsapp_number: form.whatsapp_number || null,
+      skills_talents: form.skills_talents || null,
       educational_professional_background: form.educational_professional_background || null,
       educational_institution: form.educational_institution || null,
       workplace_name: form.workplace_name || null,
@@ -109,13 +111,17 @@ export function AddMemberModal({ onClose }) {
           </div>
           <div className="grid cols-2" style={{ gap: 12 }}>
             <div className="field">
+              <label>Email <span className="faint">(optional)</span></label>
+              <input type="email" className="input" value={form.email} onChange={(e) => set({ email: e.target.value })} />
+            </div>
+            <div className="field">
               <label>Date of birth <span className="faint">(optional)</span></label>
               <input type="date" className="input" value={form.date_of_birth} onChange={(e) => set({ date_of_birth: e.target.value })} />
             </div>
-            <div className="field">
-              <label>Residence</label>
-              <input className="input" placeholder="Mountain View Estates" value={form.residence} onChange={(e) => set({ residence: e.target.value })} />
-            </div>
+          </div>
+          <div className="field">
+            <label>Residence</label>
+            <input className="input" placeholder="Mountain View Estates" value={form.residence} onChange={(e) => set({ residence: e.target.value })} />
           </div>
           <div className="grid cols-2" style={{ gap: 12 }}>
             <div className="field">
@@ -161,6 +167,10 @@ export function AddMemberModal({ onClose }) {
           <div className="field">
             <label>Educational/professional background <span className="faint">(optional)</span></label>
             <textarea className="textarea" rows={2} value={form.educational_professional_background} onChange={(e) => set({ educational_professional_background: e.target.value })} />
+          </div>
+          <div className="field">
+            <label>Skills / talents <span className="faint">(optional)</span></label>
+            <textarea className="textarea" rows={2} value={form.skills_talents} onChange={(e) => set({ skills_talents: e.target.value })} />
           </div>
 
           <div className="grid cols-2" style={{ gap: 12 }}>

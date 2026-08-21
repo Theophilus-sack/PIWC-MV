@@ -177,4 +177,45 @@ describe("members.validateRow", () => {
     expect(result.row.educational_institution).toBeNull();
     expect(result.row.workplace_name).toBeNull();
   });
+
+  it("validates email and allows it to be blank", () => {
+    expect(validateRow({ name: "A", email: "" }).row.email).toBeNull();
+    expect(validateRow({ name: "A", email: "ama@example.com" }).row.email).toBe("ama@example.com");
+    const result = validateRow({ name: "A", email: "not-an-email" });
+    expect(result.ok).toBe(false);
+    expect(result.errors).toContain("Invalid email address");
+  });
+
+  it("skills_talents is free text, trimmed, null when blank", () => {
+    expect(validateRow({ name: "A", skills_talents: " Graphic design, singing " }).row.skills_talents).toBe("Graphic design, singing");
+    expect(validateRow({ name: "A", skills_talents: "" }).row.skills_talents).toBeNull();
+  });
+
+  describe("member_id (one-time historical backfill)", () => {
+    it("is undefined when blank, so the DB trigger generates a fresh one", () => {
+      const result = validateRow({ name: "A" });
+      expect(result.ok).toBe(true);
+      expect(result.row.member_id).toBeUndefined();
+    });
+
+    it("accepts and passes through a correctly formatted pre-assigned id as-is", () => {
+      const result = validateRow({ name: "A", member_id: "PIWC-2024-0389" });
+      expect(result.ok).toBe(true);
+      expect(result.row.member_id).toBe("PIWC-2024-0389");
+    });
+
+    it("accepts an id whose sequence has grown past 4 digits", () => {
+      const result = validateRow({ name: "A", member_id: "PIWC-2026-12345" });
+      expect(result.ok).toBe(true);
+      expect(result.row.member_id).toBe("PIWC-2026-12345");
+    });
+
+    it("rejects a malformed member_id", () => {
+      for (const bad of ["389", "PIWC-26-0389", "PIWC-2024-389", "piwc-2024-0389 "]) {
+        const result = validateRow({ name: "A", member_id: bad });
+        expect(result.ok).toBe(false);
+        expect(result.errors[0]).toMatch(/Invalid Member ID format/);
+      }
+    });
+  });
 });

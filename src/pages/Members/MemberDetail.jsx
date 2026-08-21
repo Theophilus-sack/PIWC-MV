@@ -73,6 +73,12 @@ export function MemberDetail() {
               <span className="muted"><Icon name="phone" size={14} /> Phone</span>
               <span className="mono" style={{ fontSize: 12.5 }}>{member.contact || "—"}</span>
             </div>
+            {member.email && (
+              <div className="row between" style={{ padding: "8px 0" }}>
+                <span className="muted"><Icon name="phone" size={14} /> Email</span>
+                <span className="mono" style={{ fontSize: 12.5 }}>{member.email}</span>
+              </div>
+            )}
             {member.whatsapp_number && (
               <div className="row between" style={{ padding: "8px 0" }}>
                 <span className="muted"><Icon name="phone" size={14} /> WhatsApp number</span>
@@ -131,6 +137,12 @@ export function MemberDetail() {
               <div style={{ padding: "8px 0" }}>
                 <span className="muted"><Icon name="edit" size={14} /> Educational/professional background</span>
                 <p style={{ margin: "4px 0 0", fontSize: 13 }}>{member.educational_professional_background}</p>
+              </div>
+            )}
+            {member.skills_talents && (
+              <div style={{ padding: "8px 0" }}>
+                <span className="muted"><Icon name="sparkle" size={14} /> Skills / talents</span>
+                <p style={{ margin: "4px 0 0", fontSize: 13 }}>{member.skills_talents}</p>
               </div>
             )}
             {departments.length > 0 && (

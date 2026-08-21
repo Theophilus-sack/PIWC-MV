@@ -90,9 +90,10 @@ describe("CSV round-trip (Export CSV -> edit -> Import CSV)", () => {
     expect(row.educational_institution).toBe(dbRow.educational_institution);
     expect(row.workplace_name).toBe(dbRow.workplace_name);
 
-    // member_id and age_bracket are exported but deliberately excluded
-    // from templateColumns — they're server/computed, never re-imported.
-    expect(row.member_id).toBeUndefined();
+    // member_id round-trips as-is (it's a validly formatted, pre-assigned
+    // id — the historical-backfill path) since 0021; age_bracket is
+    // computed, not a real column, and stays excluded from re-import.
+    expect(row.member_id).toBe(dbRow.member_id);
     expect(row.age_bracket).toBeUndefined();
   });
 
