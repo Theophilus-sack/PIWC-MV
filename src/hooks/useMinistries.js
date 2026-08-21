@@ -75,6 +75,26 @@ export function useMinistryRoster(ministryId) {
   });
 }
 
+// Reverse of useMinistryRoster — given a member, which ministries/
+// departments they belong to (assembly='Both' entries are Departments,
+// English/Twi entries are Ministries — same join table, just a different
+// direction of lookup). Powers MemberDetail's Department/Ministry fields
+// and EditMemberModal's picker.
+export function useMemberMinistries(memberId) {
+  return useQuery({
+    queryKey: ["member-ministries", memberId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ministry_members")
+        .select("id, ministry_id, ministries(id, name, assembly)")
+        .eq("member_id", memberId);
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: Boolean(memberId),
+  });
+}
+
 export function useAddMinistryMember() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -105,10 +125,11 @@ export function useAddMinistryMemberships() {
         .insert(ministryIds.map((ministryId) => ({ ministry_id: ministryId, member_id: memberId })));
       if (error) throw error;
     },
-    onSuccess: (_data, { ministryIds }) => {
+    onSuccess: (_data, { memberId, ministryIds }) => {
       for (const ministryId of ministryIds) {
         queryClient.invalidateQueries({ queryKey: ["ministry-roster", ministryId] });
       }
+      queryClient.invalidateQueries({ queryKey: ["member-ministries", memberId] });
     },
   });
 }
@@ -116,13 +137,17 @@ export function useAddMinistryMemberships() {
 export function useRemoveMinistryMember() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ministryId }) => {
+    // memberId is optional — existing callers (Groups/Ministries roster)
+    // don't pass it and behave exactly as before; EditMemberModal's
+    // Department/Ministry picker does, so its own cache refreshes too.
+    mutationFn: async ({ id, ministryId, memberId }) => {
       const { error } = await supabase.from("ministry_members").delete().eq("id", id);
       if (error) throw error;
-      return { ministryId };
+      return { ministryId, memberId };
     },
-    onSuccess: ({ ministryId }) => {
+    onSuccess: ({ ministryId, memberId }) => {
       queryClient.invalidateQueries({ queryKey: ["ministry-roster", ministryId] });
+      if (memberId) queryClient.invalidateQueries({ queryKey: ["member-ministries", memberId] });
     },
   });
 }

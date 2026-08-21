@@ -50,7 +50,7 @@ export function CsvImportModal({ allowedTargets, ministries, onClose }) {
       }
     : {
         bulkInsert: (rows) => bulkCreateMembers.mutateAsync(rows),
-        update: (id, row) => { const { ministryId, ...patch } = row; return updateMember.mutateAsync({ id, ...patch }); },
+        update: (id, row) => { const { ministryIds, ...patch } = row; return updateMember.mutateAsync({ id, ...patch }); },
       };
   const existingMap = targetKey === "manualContacts"
     ? new Map((existingManualPhones ?? []).map((c) => [c.phone, c.id]))
@@ -283,6 +283,7 @@ export function ExportCsvModal({ allowedTargets, filteredMembers, filteredManual
       } else {
         records = targetKey === "manualContacts" ? selectedManualContacts : selectedMembers;
       }
+      if (target.deriveExportRow) records = records.map(target.deriveExportRow);
       const csv = toCsv(records, target.exportColumns);
       downloadCsv(`${target.table}-${new Date().toISOString().slice(0, 10)}.csv`, csv);
       await logBulkAudit("bulk_export", target.table, { count: records.length, scope });

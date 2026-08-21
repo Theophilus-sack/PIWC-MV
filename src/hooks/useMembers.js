@@ -125,22 +125,24 @@ export function useAllMemberContacts() {
 }
 
 // Bulk variant for CSV import — one insert per batch, same shape as
-// useBulkCreateManualContacts. Each row may carry a ministryId (resolved
-// client-side in lib/importTargets.js from a free-text "ministry" column);
-// insert() with .select() returns rows in the same order they were
-// given, so the ministry_members rows can be built by matching index
-// rather than a second round-trip per member.
+// useBulkCreateManualContacts. Each row may carry a ministryIds array
+// (resolved client-side in lib/importTargets.js from the free-text
+// "ministry" and "department" columns — a member can hold one or more of
+// each, both via the same ministry_members join table); insert() with
+// .select() returns rows in the same order they were given, so the
+// ministry_members rows can be built by matching index rather than a
+// second round-trip per member.
 export function useBulkCreateMembers() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (members) => {
-      const rows = members.map(({ ministryId, ...m }) => m);
+      const rows = members.map(({ ministryIds, ...m }) => m);
       const { data, error } = await supabase.from("members").insert(rows).select("id");
       if (error) throw error;
 
-      const ministryRows = members
-        .map((m, i) => (m.ministryId ? { ministry_id: m.ministryId, member_id: data[i].id } : null))
-        .filter(Boolean);
+      const ministryRows = members.flatMap((m, i) =>
+        (m.ministryIds ?? []).map((ministryId) => ({ ministry_id: ministryId, member_id: data[i].id }))
+      );
       if (ministryRows.length) {
         const { error: mmError } = await supabase.from("ministry_members").insert(ministryRows);
         if (mmError) throw mmError;
