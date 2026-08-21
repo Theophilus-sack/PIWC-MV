@@ -163,3 +163,18 @@ export function useDeleteMember() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["members"] }),
   });
 }
+
+// Bulk selection delete (MembersList's Select/Select all toolbar) — one
+// request for however many ids are selected, rather than one per row.
+// The on_member_delete audit trigger still fires once per row even
+// inside this single multi-row DELETE, same as any other bulk statement.
+export function useBulkDeleteMembers() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids) => {
+      const { error } = await supabase.from("members").delete().in("id", ids);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["members"] }),
+  });
+}

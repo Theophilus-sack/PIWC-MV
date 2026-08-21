@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "../../components/Icon.jsx";
+import { Modal } from "../../components/Modal.jsx";
 import { Avatar, Checkbox } from "../../components/primitives.jsx";
 import { ScrollX } from "../../components/ScrollX.jsx";
-import { useMembers, useDeleteMember } from "../../hooks/useMembers.js";
+import { useMembers, useDeleteMember, useBulkDeleteMembers } from "../../hooks/useMembers.js";
 import { useMinistries } from "../../hooks/useMinistries.js";
 import { useAuth } from "../../lib/auth.jsx";
 import { accessLevel } from "../../lib/rbac.js";
@@ -30,10 +31,13 @@ export function MembersList() {
   const [editingMember, setEditingMember] = useState(null);
   const [showImport, setShowImport] = useState(false);
   const [showExport, setShowExport] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
 
   const { data: ministries } = useMinistries();
   const { data, isLoading, isError, error } = useMembers({ page, pageSize: PAGE_SIZE, search: q, ministryId, assembly, sort });
   const deleteMember = useDeleteMember();
+  const bulkDeleteMembers = useBulkDeleteMembers();
 
   const access = accessLevel(role, "members");
   const canAdd = access === "full";
@@ -43,6 +47,28 @@ export function MembersList() {
   const rows = data?.rows ?? [];
   const total = data?.total ?? 0;
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const selectedRows = rows.filter((m) => selectedIds.has(m.id));
+  // "Select all" is page-scoped (this project's existing convention —
+  // Messages' recipient picker's "Select all visible" works the same
+  // way) rather than fetching every matching row across all pages.
+  const allVisibleSelected = rows.length > 0 && rows.every((m) => selectedIds.has(m.id));
+
+  // A selection only makes sense against the rows it was made from —
+  // clear it whenever the visible set changes underneath it.
+  useEffect(() => { setSelectedIds(new Set()); }, [page, q, ministryId, assembly, sort]);
+
+  const toggleRow = (id) => setSelectedIds((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  const toggleSelectAll = () => setSelectedIds(allVisibleSelected ? new Set() : new Set(rows.map((m) => m.id)));
+
+  const onBulkDelete = async () => {
+    await bulkDeleteMembers.mutateAsync([...selectedIds]);
+    setSelectedIds(new Set());
+    setShowBulkDeleteConfirm(false);
+  };
 
   const onSearchChange = (v) => { setQ(v); setPage(0); };
   const onMinistryChange = (v) => { setMinistryId(v); setPage(0); };
@@ -89,6 +115,20 @@ export function MembersList() {
         </div>
       </div>
 
+      {selectedIds.size > 0 && (
+        <div className="glass card" style={{ padding: "10px 16px", marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 13.5, fontWeight: 500 }}>{selectedIds.size} selected</span>
+          <div className="row" style={{ gap: 8 }}>
+            <button className="btn btn-ghost" onClick={() => setSelectedIds(new Set())}>Clear</button>
+            {canDelete && (
+              <button className="btn" style={{ background: "rgba(207,67,67,0.12)", color: "#a83434", borderColor: "rgba(207,67,67,0.3)" }} onClick={() => setShowBulkDeleteConfirm(true)}>
+                <Icon name="trash" size={14} /> Delete selected
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="glass card" style={{ padding: 0, overflow: "hidden" }}>
         {isError && (
           <div style={{ padding: 20 }} className="badge badge-red">Couldn't load members: {error.message}</div>
@@ -98,7 +138,7 @@ export function MembersList() {
           <table className="table">
             <thead>
               <tr>
-                <th style={{ width: 36 }}><Checkbox checked={false} onChange={() => {}} /></th>
+                <th style={{ width: 36 }}><Checkbox checked={allVisibleSelected} onChange={toggleSelectAll} /></th>
                 <th>Member</th>
                 <th>Phone</th>
                 <th>Gender</th>
@@ -117,7 +157,7 @@ export function MembersList() {
               )}
               {rows.map((m) => (
                 <tr key={m.id} className="row-hover" onClick={() => navigate(`/members/${m.id}`)}>
-                  <td onClick={(e) => e.stopPropagation()}><Checkbox checked={false} onChange={() => {}} /></td>
+                  <td onClick={(e) => e.stopPropagation()}><Checkbox checked={selectedIds.has(m.id)} onChange={() => toggleRow(m.id)} /></td>
                   <td>
                     <div className="row" style={{ gap: 12 }}>
                       <Avatar initials={initialsOf(m.name)} gold={m.gender === "Female"} size={34} />
@@ -180,13 +220,52 @@ export function MembersList() {
           allowedTargets={["members"]}
           filteredMembers={rows}
           filteredManualContacts={[]}
-          selectedMembers={[]}
+          selectedMembers={selectedRows}
           selectedManualContacts={[]}
-          allowSelected={false}
+          allowSelected={selectedRows.length > 0}
           onClose={() => setShowExport(false)}
         />
       )}
+      {showBulkDeleteConfirm && (
+        <ConfirmBulkDeleteModal
+          count={selectedIds.size}
+          deleting={bulkDeleteMembers.isPending}
+          onConfirm={onBulkDelete}
+          onCancel={() => setShowBulkDeleteConfirm(false)}
+        />
+      )}
     </div>
+  );
+}
+
+function ConfirmBulkDeleteModal({ count, deleting, onConfirm, onCancel }) {
+  return (
+    <Modal onClose={deleting ? () => {} : onCancel}>
+      <div className="glass modal-card" style={{ maxWidth: 420, padding: 26 }} onClick={(e) => e.stopPropagation()}>
+        <div className="row" style={{ gap: 10, marginBottom: 14 }}>
+          <div style={{ color: "#a83434" }}><Icon name="trash" size={20} /></div>
+          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 19, fontWeight: 500 }}>Delete {count} member{count === 1 ? "" : "s"}?</h2>
+        </div>
+        <p style={{ fontSize: 13.5, color: "var(--ink-2)", marginBottom: 8 }}>
+          This will permanently delete {count === 1 ? "this member record" : `these ${count} member records`}, along with their
+          ministry/department memberships and attendance history.
+        </p>
+        <div className="badge badge-red" style={{ display: "block", padding: "8px 12px" }}>
+          This action cannot be undone.
+        </div>
+        <div className="row" style={{ gap: 8, marginTop: 20, justifyContent: "flex-end" }}>
+          <button className="btn" onClick={onCancel} disabled={deleting}>Cancel</button>
+          <button
+            className="btn"
+            style={{ background: "#a83434", color: "#fff", borderColor: "#a83434" }}
+            onClick={onConfirm}
+            disabled={deleting}
+          >
+            <Icon name="trash" size={14} /> {deleting ? "Deleting…" : `Delete ${count} member${count === 1 ? "" : "s"}`}
+          </button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 
