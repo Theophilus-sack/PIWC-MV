@@ -5,6 +5,7 @@
 // for members, 0010_messaging_extended.sql for manual_contacts) — not an
 // invented column list.
 import { normalizeGhanaPhone } from "./sms.js";
+import { ageBracketLabel } from "./ageBracket.js";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -19,6 +20,12 @@ const STATUS_VALUES = ["first-timer", "stay", "visit"];
 function normalizeStatus(v) {
   const s = String(v ?? "").trim().toLowerCase();
   return STATUS_VALUES.includes(s) ? s : null;
+}
+
+const MARITAL_STATUS_VALUES = ["Single", "Married", "Divorced", "Widowed", "Engaged", "Separated"];
+function normalizeMaritalStatus(v) {
+  const s = String(v ?? "").trim().toLowerCase();
+  return MARITAL_STATUS_VALUES.find((m) => m.toLowerCase() === s) ?? null;
 }
 
 export const IMPORT_TARGETS = {
@@ -74,28 +81,49 @@ export const IMPORT_TARGETS = {
     table: "members",
     templateColumns: [
       "name", "gender", "contact", "residence", "preferred_assembly",
-      "status", "date_of_birth", "date_joined", "visiting_from", "ministry",
+      "status", "date_of_birth", "date_joined", "visiting_from",
+      "nationality", "marital_status", "whatsapp_number",
+      "educational_professional_background", "educational_institution",
+      "workplace_name", "ministry", "department",
     ],
     templateExample: {
       name: "Ama Boateng", gender: "Female", contact: "0551234567", residence: "Adenta",
       preferred_assembly: "English", status: "stay", date_of_birth: "", date_joined: "2026-01-15",
-      visiting_from: "", ministry: "Women's Ministry",
+      visiting_from: "", nationality: "Ghana", marital_status: "Single",
+      whatsapp_number: "0551234567", educational_professional_background: "Accountant",
+      educational_institution: "University of Ghana", workplace_name: "Ghana Revenue Authority",
+      ministry: "Women's Ministry", department: "",
     },
+    // member_id and age_bracket are both server/computed — never in the
+    // import template, always in the export.
     exportColumns: [
+      { key: "member_id", label: "Member ID" },
       { key: "name", label: "Name" },
       { key: "gender", label: "Gender" },
       { key: "contact", label: "Phone", isPhone: true },
+      { key: "whatsapp_number", label: "WhatsApp Number", isPhone: true },
       { key: "residence", label: "Residence" },
       { key: "preferred_assembly", label: "Preferred Assembly" },
       { key: "status", label: "Status" },
+      { key: "nationality", label: "Nationality" },
+      { key: "marital_status", label: "Marital Status" },
       { key: "date_of_birth", label: "Date of Birth" },
+      { key: "age_bracket", label: "Age Bracket" },
       { key: "date_joined", label: "Date Joined" },
       { key: "visiting_from", label: "Visiting From" },
+      { key: "educational_professional_background", label: "Educational/Professional Background" },
+      { key: "educational_institution", label: "Educational Institution" },
+      { key: "workplace_name", label: "Workplace Name" },
     ],
-    // ctx.ministries: [{id, name}] — used to map a free-text "ministry"
-    // column value to an existing ministry, per spec §21. An unmatched
-    // name is a warning (row still imports), never a hard error and
-    // never a silently-created new ministry.
+    // Applied to every record right before export — age_bracket is never
+    // stored, so it's computed fresh at export time from date_of_birth.
+    deriveExportRow: (row) => ({ ...row, age_bracket: ageBracketLabel(row.date_of_birth) }),
+    // ctx.ministries: [{id, name, assembly}] — used to map the free-text
+    // "ministry" (English/Twi) and "department" (assembly='Both', same
+    // table the Groups/Leadership pages already label "Departments")
+    // columns to existing ministries. An unmatched name is a warning
+    // (row still imports), never a hard error and never a silently-
+    // created new ministry/department.
     validateRow(raw, ctx = {}) {
       const errors = [];
       const warnings = [];
@@ -117,6 +145,13 @@ export const IMPORT_TARGETS = {
         if (!contact) errors.push("Invalid phone number");
       }
 
+      let whatsappNumber = null;
+      const whatsappRaw = (raw.whatsapp_number ?? "").trim();
+      if (whatsappRaw) {
+        whatsappNumber = normalizeGhanaPhone(whatsappRaw);
+        if (!whatsappNumber) errors.push("Invalid WhatsApp number");
+      }
+
       let status = "stay";
       const statusRaw = (raw.status ?? "").trim();
       if (statusRaw) {
@@ -132,12 +167,29 @@ export const IMPORT_TARGETS = {
         assembly = match ?? null;
       }
 
-      let ministryId = null;
+      let maritalStatus = null;
+      const maritalRaw = (raw.marital_status ?? "").trim();
+      if (maritalRaw) {
+        maritalStatus = normalizeMaritalStatus(maritalRaw);
+        if (!maritalStatus) errors.push("Invalid marital status (expected Single/Married/Divorced/Widowed/Engaged/Separated)");
+      }
+
+      const ministryIds = [];
       const ministryRaw = (raw.ministry ?? "").trim();
       if (ministryRaw) {
-        const match = (ctx.ministries ?? []).find((m) => m.name.toLowerCase() === ministryRaw.toLowerCase());
-        if (match) ministryId = match.id;
+        const match = (ctx.ministries ?? []).find((m) =>
+          m.name.toLowerCase() === ministryRaw.toLowerCase() && m.assembly !== "Both"
+        );
+        if (match) ministryIds.push(match.id);
         else warnings.push(`Ministry "${ministryRaw}" not found — member will still be imported, just without that ministry link.`);
+      }
+      const departmentRaw = (raw.department ?? "").trim();
+      if (departmentRaw) {
+        const match = (ctx.ministries ?? []).find((m) =>
+          m.name.toLowerCase() === departmentRaw.toLowerCase() && m.assembly === "Both"
+        );
+        if (match) ministryIds.push(match.id);
+        else warnings.push(`Department "${departmentRaw}" not found — member will still be imported, just without that department link.`);
       }
 
       if (errors.length) return { ok: false, errors };
@@ -151,7 +203,13 @@ export const IMPORT_TARGETS = {
           date_of_birth: (raw.date_of_birth ?? "").trim() || null,
           date_joined: (raw.date_joined ?? "").trim() || undefined, // undefined -> DB default (today)
           visiting_from: (raw.visiting_from ?? "").trim() || null,
-          ministryId,
+          nationality: (raw.nationality ?? "").trim() || undefined, // undefined -> DB default ('Ghana')
+          marital_status: maritalStatus,
+          whatsapp_number: whatsappNumber,
+          educational_professional_background: (raw.educational_professional_background ?? "").trim() || null,
+          educational_institution: (raw.educational_institution ?? "").trim() || null,
+          workplace_name: (raw.workplace_name ?? "").trim() || null,
+          ministryIds,
         },
         duplicateValue: contact,
       };

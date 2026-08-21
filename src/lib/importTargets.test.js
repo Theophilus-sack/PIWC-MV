@@ -86,16 +86,95 @@ describe("members.validateRow", () => {
   });
 
   it("maps a recognized ministry name to its id", () => {
-    const result = validateRow({ name: "A", ministry: "women's ministry" }, { ministries: [{ id: "m1", name: "Women's Ministry" }] });
+    const result = validateRow({ name: "A", ministry: "women's ministry" }, { ministries: [{ id: "m1", name: "Women's Ministry", assembly: "English" }] });
     expect(result.ok).toBe(true);
-    expect(result.row.ministryId).toBe("m1");
+    expect(result.row.ministryIds).toEqual(["m1"]);
     expect(result.warnings).toEqual([]);
   });
 
   it("warns (but still imports) on an unrecognized ministry name", () => {
     const result = validateRow({ name: "A", ministry: "Nonexistent Ministry" }, { ministries: [] });
     expect(result.ok).toBe(true);
-    expect(result.row.ministryId).toBeNull();
+    expect(result.row.ministryIds).toEqual([]);
     expect(result.warnings.length).toBe(1);
+  });
+
+  it("a ministry name only matches non-'Both' (Department) entries", () => {
+    const result = validateRow(
+      { name: "A", ministry: "Media Team" },
+      { ministries: [{ id: "d1", name: "Media Team", assembly: "Both" }] }
+    );
+    expect(result.ok).toBe(true);
+    expect(result.row.ministryIds).toEqual([]); // Both-assembly entries are Departments, not Ministries
+    expect(result.warnings.length).toBe(1);
+  });
+
+  it("maps a recognized department name (assembly='Both') to its id", () => {
+    const result = validateRow(
+      { name: "A", department: "media team" },
+      { ministries: [{ id: "d1", name: "Media Team", assembly: "Both" }] }
+    );
+    expect(result.ok).toBe(true);
+    expect(result.row.ministryIds).toEqual(["d1"]);
+    expect(result.warnings).toEqual([]);
+  });
+
+  it("warns (but still imports) on an unrecognized department name", () => {
+    const result = validateRow({ name: "A", department: "Nonexistent Department" }, { ministries: [] });
+    expect(result.ok).toBe(true);
+    expect(result.row.ministryIds).toEqual([]);
+    expect(result.warnings.length).toBe(1);
+  });
+
+  it("combines both a matched ministry and a matched department into one ministryIds array", () => {
+    const result = validateRow(
+      { name: "A", ministry: "Women's Ministry", department: "Media Team" },
+      { ministries: [
+        { id: "m1", name: "Women's Ministry", assembly: "English" },
+        { id: "d1", name: "Media Team", assembly: "Both" },
+      ] }
+    );
+    expect(result.ok).toBe(true);
+    expect(result.row.ministryIds).toEqual(["m1", "d1"]);
+  });
+
+  it("normalizes marital_status case-insensitively against the 6 allowed values", () => {
+    expect(validateRow({ name: "A", marital_status: "MARRIED" }).row.marital_status).toBe("Married");
+    expect(validateRow({ name: "A", marital_status: "single" }).row.marital_status).toBe("Single");
+  });
+
+  it("allows a blank marital_status", () => {
+    const result = validateRow({ name: "A", marital_status: "" });
+    expect(result.ok).toBe(true);
+    expect(result.row.marital_status).toBeNull();
+  });
+
+  it("rejects an invalid marital_status", () => {
+    const result = validateRow({ name: "A", marital_status: "It's Complicated" });
+    expect(result.ok).toBe(false);
+    expect(result.errors[0]).toMatch(/Invalid marital status/);
+  });
+
+  it("validates whatsapp_number the same way as contact, and it's optional", () => {
+    expect(validateRow({ name: "A", whatsapp_number: "" }).row.whatsapp_number).toBeNull();
+    expect(validateRow({ name: "A", whatsapp_number: "0241234567" }).row.whatsapp_number).toBe("233241234567");
+    const result = validateRow({ name: "A", whatsapp_number: "not-a-phone" });
+    expect(result.ok).toBe(false);
+    expect(result.errors).toContain("Invalid WhatsApp number");
+  });
+
+  it("nationality is free text; blank becomes undefined so the DB default ('Ghana') applies, not an explicit null", () => {
+    expect(validateRow({ name: "A", nationality: "Nigeria" }).row.nationality).toBe("Nigeria");
+    expect(validateRow({ name: "A", nationality: "" }).row.nationality).toBeUndefined();
+  });
+
+  it("free-text education/work fields trim and null-out when blank", () => {
+    const result = validateRow({
+      name: "A", educational_professional_background: " Accountant ",
+      educational_institution: "", workplace_name: "  ",
+    });
+    expect(result.row.educational_professional_background).toBe("Accountant");
+    expect(result.row.educational_institution).toBeNull();
+    expect(result.row.workplace_name).toBeNull();
   });
 });

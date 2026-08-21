@@ -6,13 +6,44 @@ import { parseCsvObjects } from "./csv.js";
 
 export const IMPORT_BATCH_SIZE = 500;
 
+// Maps a CSV header cell to a target's canonical field key, accepting
+// either the import template's own column name ("preferred_assembly") or
+// the export's friendly label ("Preferred Assembly") — case-insensitive.
+// Without this, a file round-tripped through Export CSV -> edit -> Import
+// CSV wouldn't actually populate anything: exportColumns uses Title Case
+// labels while templateColumns/validateRow expect the raw snake_case
+// keys, so the header row would never match. Anything that matches
+// neither (e.g. a computed, non-importable export column like "Age
+// Bracket") just passes through unmapped and is silently ignored by
+// validateRow, same as any other unrecognized column.
+function headerKeyMap(target) {
+  const map = new Map();
+  for (const key of target.templateColumns) map.set(key.toLowerCase(), key);
+  for (const col of target.exportColumns ?? []) {
+    if (!map.has(col.label.toLowerCase())) map.set(col.label.toLowerCase(), col.key);
+  }
+  return map;
+}
+
+function normalizeHeaders(records, target) {
+  const map = headerKeyMap(target);
+  return records.map((raw) => {
+    const normalized = {};
+    for (const [header, value] of Object.entries(raw)) {
+      normalized[map.get(header.trim().toLowerCase()) ?? header] = value;
+    }
+    return normalized;
+  });
+}
+
 /**
  * Parses CSV text against a target's validateRow(raw, ctx) and an
  * existingMap (duplicateValue -> existing record id) to sort every row
  * into valid / duplicate / invalid buckets.
  */
 export function parseAndValidate(text, target, ctx, existingMap) {
-  const { records } = parseCsvObjects(text);
+  const { records: rawRecords } = parseCsvObjects(text);
+  const records = normalizeHeaders(rawRecords, target);
   const seenInFile = new Set();
   const valid = [];
   const duplicates = [];

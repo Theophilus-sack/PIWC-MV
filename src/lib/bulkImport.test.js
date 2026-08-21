@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { parseAndValidate, importInBatches } from "./bulkImport.js";
 import { IMPORT_TARGETS } from "./importTargets.js";
+import { toCsv } from "./csv.js";
 
 describe("parseAndValidate", () => {
   const target = IMPORT_TARGETS.manualContacts;
@@ -36,6 +37,85 @@ describe("parseAndValidate", () => {
     expect(result.valid).toHaveLength(1);
     expect(result.invalid).toHaveLength(0);
     expect(result.duplicates).toHaveLength(0);
+  });
+});
+
+describe("CSV round-trip (Export CSV -> edit -> Import CSV)", () => {
+  // Export uses friendly Title Case labels ("Preferred Assembly"); the
+  // import template/validateRow expect raw snake_case keys
+  // ("preferred_assembly"). Without header normalization in
+  // parseAndValidate, re-uploading an exported file would populate
+  // nothing — every raw.<key> would be undefined.
+  it("a Members export re-imports as the same data for every importable field", () => {
+    const target = IMPORT_TARGETS.members;
+    const dbRow = {
+      id: "abc-123",
+      member_id: "PIWC-2026-0389", // server-generated — must NOT survive re-import
+      name: "Ama Boateng",
+      gender: "Female",
+      contact: "233241234567",
+      whatsapp_number: "233551234567",
+      residence: "Adenta",
+      preferred_assembly: "English",
+      status: "stay",
+      nationality: "Nigeria",
+      marital_status: "Single",
+      date_of_birth: "1990-05-15",
+      date_joined: "2026-01-15",
+      visiting_from: null,
+      educational_professional_background: "Accountant",
+      educational_institution: "University of Ghana",
+      workplace_name: "Ghana Revenue Authority",
+    };
+    const exported = target.deriveExportRow(dbRow);
+    const csv = toCsv([exported], target.exportColumns);
+
+    const result = parseAndValidate(csv, target, { ministries: [] }, new Map());
+    expect(result.invalid).toEqual([]);
+    expect(result.valid).toHaveLength(1);
+
+    const { row } = result.valid[0];
+    expect(row.name).toBe(dbRow.name);
+    expect(row.gender).toBe(dbRow.gender);
+    expect(row.contact).toBe(dbRow.contact);
+    expect(row.whatsapp_number).toBe(dbRow.whatsapp_number);
+    expect(row.residence).toBe(dbRow.residence);
+    expect(row.preferred_assembly).toBe(dbRow.preferred_assembly);
+    expect(row.status).toBe(dbRow.status);
+    expect(row.nationality).toBe(dbRow.nationality);
+    expect(row.marital_status).toBe(dbRow.marital_status);
+    expect(row.date_of_birth).toBe(dbRow.date_of_birth);
+    expect(row.date_joined).toBe(dbRow.date_joined);
+    expect(row.educational_professional_background).toBe(dbRow.educational_professional_background);
+    expect(row.educational_institution).toBe(dbRow.educational_institution);
+    expect(row.workplace_name).toBe(dbRow.workplace_name);
+
+    // member_id and age_bracket are exported but deliberately excluded
+    // from templateColumns — they're server/computed, never re-imported.
+    expect(row.member_id).toBeUndefined();
+    expect(row.age_bracket).toBeUndefined();
+  });
+
+  it("a Manual Contacts export re-imports as the same data", () => {
+    const target = IMPORT_TARGETS.manualContacts;
+    const dbRow = { full_name: "Kwame Mensah", phone: "233241234567", email: "kwame@example.com", group_label: "Youth", notes: "VIP" };
+    const csv = toCsv([dbRow], target.exportColumns);
+
+    const result = parseAndValidate(csv, target, {}, new Map());
+    expect(result.valid).toHaveLength(1);
+    const { row } = result.valid[0];
+    expect(row.fullName).toBe(dbRow.full_name);
+    expect(row.phone).toBe(dbRow.phone);
+    expect(row.email).toBe(dbRow.email);
+    expect(row.groupLabel).toBe(dbRow.group_label);
+    expect(row.notes).toBe(dbRow.notes);
+  });
+
+  it("also accepts the raw template header names directly (not just export labels)", () => {
+    const target = IMPORT_TARGETS.members;
+    const csv = "name,preferred_assembly\nAma Boateng,English";
+    const result = parseAndValidate(csv, target, { ministries: [] }, new Map());
+    expect(result.valid[0].row.preferred_assembly).toBe("English");
   });
 });
 
