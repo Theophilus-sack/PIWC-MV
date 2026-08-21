@@ -5,11 +5,16 @@ import { Switch, Checkbox } from "../../components/primitives.jsx";
 import { useCreateMember } from "../../hooks/useMembers.js";
 import { useMinistries, useAddMinistryMemberships } from "../../hooks/useMinistries.js";
 import { groupByAssembly } from "../../lib/assembly.js";
+import { COUNTRIES } from "../../lib/countries.js";
+
+const MARITAL_STATUSES = ["Single", "Married", "Divorced", "Widowed", "Engaged", "Separated"];
 
 const emptyForm = {
   name: "", contact: "", gender: "Female", residence: "",
   preferred_assembly: "English", date_of_birth: "",
   date_joined: new Date().toISOString().slice(0, 10),
+  nationality: "Ghana", marital_status: "", whatsapp_number: "",
+  educational_professional_background: "", educational_institution: "", workplace_name: "",
 };
 
 // Ported from the original screens.jsx AddMemberModal, extended per
@@ -23,15 +28,22 @@ export function AddMemberModal({ onClose }) {
   const [form, setForm] = useState(emptyForm);
   const [isFirstTimer, setIsFirstTimer] = useState(true);
   const [intent, setIntent] = useState(""); // "stay" | "visit", only when isFirstTimer
+  const [departmentIds, setDepartmentIds] = useState([]);
   const [ministryIds, setMinistryIds] = useState([]);
   const [error, setError] = useState(null);
 
   const { data: ministries } = useMinistries();
-  const ministrySections = groupByAssembly(ministries);
+  // Department = the ministries table's assembly='Both' category (already
+  // labeled "Departments" in Groups/Leadership); Ministry = English/Twi.
+  // Same join table (ministry_members) either way — two separate pickers
+  // over one list, filtered by assembly, not a new concept.
+  const departmentOptions = (ministries ?? []).filter((m) => m.assembly === "Both");
+  const ministrySections = groupByAssembly((ministries ?? []).filter((m) => m.assembly !== "Both"));
   const createMember = useCreateMember();
   const addMinistryMemberships = useAddMinistryMemberships();
 
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
+  const toggleDepartment = (id) => setDepartmentIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
   const toggleMinistry = (id) => setMinistryIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
 
   const onSave = async () => {
@@ -44,12 +56,18 @@ export function AddMemberModal({ onClose }) {
       status: isFirstTimer ? intent : "stay",
       visiting_from: isFirstTimer ? form.visiting_from || null : null,
       date_of_birth: form.date_of_birth || null,
+      marital_status: form.marital_status || null,
+      whatsapp_number: form.whatsapp_number || null,
+      educational_professional_background: form.educational_professional_background || null,
+      educational_institution: form.educational_institution || null,
+      workplace_name: form.workplace_name || null,
     };
 
+    const allMinistryIds = [...departmentIds, ...ministryIds];
     try {
       const created = await createMember.mutateAsync(payload);
-      if (ministryIds.length) {
-        await addMinistryMemberships.mutateAsync({ memberId: created.id, ministryIds });
+      if (allMinistryIds.length) {
+        await addMinistryMemberships.mutateAsync({ memberId: created.id, ministryIds: allMinistryIds });
       }
       onClose();
     } catch (err) {
@@ -111,22 +129,69 @@ export function AddMemberModal({ onClose }) {
               <input type="date" className="input" value={form.date_joined} onChange={(e) => set({ date_joined: e.target.value })} />
             </div>
           </div>
-
+          <div className="grid cols-2" style={{ gap: 12 }}>
+            <div className="field">
+              <label>Nationality</label>
+              <select className="select" value={form.nationality} onChange={(e) => set({ nationality: e.target.value })}>
+                {COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label>Marital status <span className="faint">(optional)</span></label>
+              <select className="select" value={form.marital_status} onChange={(e) => set({ marital_status: e.target.value })}>
+                <option value="">Not specified</option>
+                {MARITAL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+          </div>
           <div className="field">
-            <label>Ministries <span className="faint">(optional, can pick more than one)</span></label>
-            <div className="glass-soft" style={{ padding: 12, display: "flex", flexDirection: "column", gap: 4, maxHeight: 180, overflowY: "auto" }}>
-              {ministrySections.map((section) => (
-                <div key={section.label}>
-                  <div className="eyebrow" style={{ margin: "6px 0 2px" }}>{section.label}</div>
-                  {section.items.map((m) => (
-                    <label key={m.id} className="row" style={{ gap: 8, padding: "4px 0", cursor: "pointer" }}>
-                      <Checkbox checked={ministryIds.includes(m.id)} onChange={() => toggleMinistry(m.id)} />
-                      <span style={{ fontSize: 13.5 }}>{m.name}</span>
-                    </label>
-                  ))}
-                </div>
-              ))}
-              {ministrySections.length === 0 && <p className="muted" style={{ fontSize: 13 }}>No ministries yet.</p>}
+            <label>WhatsApp number <span className="faint">(optional)</span></label>
+            <input className="input" placeholder="+233 24 …" value={form.whatsapp_number} onChange={(e) => set({ whatsapp_number: e.target.value })} />
+          </div>
+          <div className="grid cols-2" style={{ gap: 12 }}>
+            <div className="field">
+              <label>Educational institution <span className="faint">(optional)</span></label>
+              <input className="input" value={form.educational_institution} onChange={(e) => set({ educational_institution: e.target.value })} />
+            </div>
+            <div className="field">
+              <label>Name of workplace <span className="faint">(optional)</span></label>
+              <input className="input" value={form.workplace_name} onChange={(e) => set({ workplace_name: e.target.value })} />
+            </div>
+          </div>
+          <div className="field">
+            <label>Educational/professional background <span className="faint">(optional)</span></label>
+            <textarea className="textarea" rows={2} value={form.educational_professional_background} onChange={(e) => set({ educational_professional_background: e.target.value })} />
+          </div>
+
+          <div className="grid cols-2" style={{ gap: 12 }}>
+            <div className="field">
+              <label>Department <span className="faint">(optional)</span></label>
+              <div className="glass-soft" style={{ padding: 12, display: "flex", flexDirection: "column", gap: 4, maxHeight: 140, overflowY: "auto" }}>
+                {departmentOptions.map((d) => (
+                  <label key={d.id} className="row" style={{ gap: 8, padding: "4px 0", cursor: "pointer" }}>
+                    <Checkbox checked={departmentIds.includes(d.id)} onChange={() => toggleDepartment(d.id)} />
+                    <span style={{ fontSize: 13.5 }}>{d.name}</span>
+                  </label>
+                ))}
+                {departmentOptions.length === 0 && <p className="muted" style={{ fontSize: 13 }}>No departments yet.</p>}
+              </div>
+            </div>
+            <div className="field">
+              <label>Ministry <span className="faint">(optional, can pick more than one)</span></label>
+              <div className="glass-soft" style={{ padding: 12, display: "flex", flexDirection: "column", gap: 4, maxHeight: 140, overflowY: "auto" }}>
+                {ministrySections.map((section) => (
+                  <div key={section.label}>
+                    <div className="eyebrow" style={{ margin: "6px 0 2px" }}>{section.label}</div>
+                    {section.items.map((m) => (
+                      <label key={m.id} className="row" style={{ gap: 8, padding: "4px 0", cursor: "pointer" }}>
+                        <Checkbox checked={ministryIds.includes(m.id)} onChange={() => toggleMinistry(m.id)} />
+                        <span style={{ fontSize: 13.5 }}>{m.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                ))}
+                {ministrySections.length === 0 && <p className="muted" style={{ fontSize: 13 }}>No ministries yet.</p>}
+              </div>
             </div>
           </div>
 

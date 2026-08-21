@@ -4,8 +4,10 @@ import { Icon } from "../../components/Icon.jsx";
 import { Avatar } from "../../components/primitives.jsx";
 import { useMember } from "../../hooks/useMembers.js";
 import { useMemberAttendance } from "../../hooks/useAttendance.js";
+import { useMemberMinistries } from "../../hooks/useMinistries.js";
 import { useAuth } from "../../lib/auth.jsx";
 import { accessLevel } from "../../lib/rbac.js";
+import { ageBracketLabel } from "../../lib/ageBracket.js";
 import { EditMemberModal } from "./EditMemberModal.jsx";
 
 // Ported from the original screens.jsx MemberDetail — same card layout,
@@ -19,12 +21,15 @@ export function MemberDetail() {
   const [showEdit, setShowEdit] = useState(false);
   const { data: member, isLoading, isError, error } = useMember(id);
   const { data: attendance } = useMemberAttendance(id);
+  const { data: memberships } = useMemberMinistries(id);
 
   if (isLoading) return <div className="content" style={{ padding: 40 }}>Loading…</div>;
   if (isError) return <div className="badge badge-red" style={{ padding: "8px 12px" }}>Couldn't load this member: {error.message}</div>;
   if (!member) return null;
 
   const initials = (member.name || "?").trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join("").toUpperCase();
+  const departments = (memberships ?? []).filter((r) => r.ministries?.assembly === "Both");
+  const memberMinistries = (memberships ?? []).filter((r) => r.ministries?.assembly !== "Both");
 
   return (
     <div className="fade-in">
@@ -52,10 +57,28 @@ export function MemberDetail() {
           </div>
           <div className="divider" />
           <div style={{ textAlign: "left" }}>
+            {member.member_id && (
+              <div className="row between" style={{ padding: "8px 0" }}>
+                <span className="muted"><Icon name="shield" size={14} /> Member ID</span>
+                <span className="mono" style={{ fontSize: 12.5 }}>{member.member_id}</span>
+              </div>
+            )}
+            {member.date_joined && (
+              <div className="row between" style={{ padding: "8px 0" }}>
+                <span className="muted"><Icon name="calendar" size={14} /> Year of joining</span>
+                <span>{new Date(member.date_joined).getFullYear()}</span>
+              </div>
+            )}
             <div className="row between" style={{ padding: "8px 0" }}>
               <span className="muted"><Icon name="phone" size={14} /> Phone</span>
               <span className="mono" style={{ fontSize: 12.5 }}>{member.contact || "—"}</span>
             </div>
+            {member.whatsapp_number && (
+              <div className="row between" style={{ padding: "8px 0" }}>
+                <span className="muted"><Icon name="phone" size={14} /> WhatsApp number</span>
+                <span className="mono" style={{ fontSize: 12.5 }}>{member.whatsapp_number}</span>
+              </div>
+            )}
             <div className="row between" style={{ padding: "8px 0" }}>
               <span className="muted"><Icon name="calendar" size={14} /> Joined</span>
               <span>{member.date_joined ? new Date(member.date_joined).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" }) : "—"}</span>
@@ -68,6 +91,18 @@ export function MemberDetail() {
               <span className="muted"><Icon name="church" size={14} /> Assembly</span>
               <span>{member.preferred_assembly || "—"}</span>
             </div>
+            <div className="row between" style={{ padding: "8px 0" }}>
+              <span className="muted"><Icon name="pin" size={14} /> Nationality</span>
+              <span>{member.nationality || "—"}</span>
+            </div>
+            <div className="row between" style={{ padding: "8px 0" }}>
+              <span className="muted"><Icon name="user" size={14} /> Marital status</span>
+              <span>{member.marital_status || "—"}</span>
+            </div>
+            <div className="row between" style={{ padding: "8px 0" }}>
+              <span className="muted"><Icon name="sparkle" size={14} /> Age bracket</span>
+              <span>{ageBracketLabel(member.date_of_birth)}</span>
+            </div>
             {member.date_of_birth && (
               <div className="row between" style={{ padding: "8px 0" }}>
                 <span className="muted"><Icon name="sparkle" size={14} /> Date of birth</span>
@@ -78,6 +113,40 @@ export function MemberDetail() {
               <div className="row between" style={{ padding: "8px 0" }}>
                 <span className="muted"><Icon name="pin" size={14} /> Visiting from</span>
                 <span>{member.visiting_from}</span>
+              </div>
+            )}
+            {member.educational_institution && (
+              <div className="row between" style={{ padding: "8px 0" }}>
+                <span className="muted"><Icon name="church" size={14} /> Educational institution</span>
+                <span>{member.educational_institution}</span>
+              </div>
+            )}
+            {member.workplace_name && (
+              <div className="row between" style={{ padding: "8px 0" }}>
+                <span className="muted"><Icon name="church" size={14} /> Workplace</span>
+                <span>{member.workplace_name}</span>
+              </div>
+            )}
+            {member.educational_professional_background && (
+              <div style={{ padding: "8px 0" }}>
+                <span className="muted"><Icon name="edit" size={14} /> Educational/professional background</span>
+                <p style={{ margin: "4px 0 0", fontSize: 13 }}>{member.educational_professional_background}</p>
+              </div>
+            )}
+            {departments.length > 0 && (
+              <div style={{ padding: "8px 0" }}>
+                <span className="muted"><Icon name="church" size={14} /> Department</span>
+                <div className="row" style={{ gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+                  {departments.map((r) => <span key={r.id} className="badge badge-gold">{r.ministries.name}</span>)}
+                </div>
+              </div>
+            )}
+            {memberMinistries.length > 0 && (
+              <div style={{ padding: "8px 0" }}>
+                <span className="muted"><Icon name="church" size={14} /> Ministry</span>
+                <div className="row" style={{ gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+                  {memberMinistries.map((r) => <span key={r.id} className="badge badge-blue">{r.ministries.name}</span>)}
+                </div>
               </div>
             )}
           </div>

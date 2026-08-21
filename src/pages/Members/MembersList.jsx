@@ -7,6 +7,7 @@ import { useMembers, useDeleteMember } from "../../hooks/useMembers.js";
 import { useMinistries } from "../../hooks/useMinistries.js";
 import { useAuth } from "../../lib/auth.jsx";
 import { accessLevel } from "../../lib/rbac.js";
+import { ageBracketLabel } from "../../lib/ageBracket.js";
 import { AddMemberModal } from "./AddMemberModal.jsx";
 import { EditMemberModal } from "./EditMemberModal.jsx";
 import { CsvImportModal, ExportCsvModal } from "../../components/CsvImportExport.jsx";
@@ -101,6 +102,7 @@ export function MembersList() {
                 <th>Member</th>
                 <th>Phone</th>
                 <th>Gender</th>
+                <th>Age Bracket</th>
                 <th>Status</th>
                 <th>Joined</th>
                 <th></th>
@@ -108,10 +110,10 @@ export function MembersList() {
             </thead>
             <tbody>
               {isLoading && (
-                <tr><td colSpan={7} className="muted" style={{ padding: 20, textAlign: "center" }}>Loading…</td></tr>
+                <tr><td colSpan={8} className="muted" style={{ padding: 20, textAlign: "center" }}>Loading…</td></tr>
               )}
               {!isLoading && rows.length === 0 && (
-                <tr><td colSpan={7} className="muted" style={{ padding: 20, textAlign: "center" }}>No members match this search.</td></tr>
+                <tr><td colSpan={8} className="muted" style={{ padding: 20, textAlign: "center" }}>No members match this search.</td></tr>
               )}
               {rows.map((m) => (
                 <tr key={m.id} className="row-hover" onClick={() => navigate(`/members/${m.id}`)}>
@@ -127,6 +129,7 @@ export function MembersList() {
                   </td>
                   <td className="mono muted" style={{ fontSize: 12.5 }}>{m.contact || "—"}</td>
                   <td><span className="badge">{m.gender || "—"}</span></td>
+                  <td className="muted">{ageBracketLabel(m.date_of_birth)}</td>
                   <td><span className={"badge" + (m.status === "first-timer" ? " badge-gold" : "")}>{m.status}</span></td>
                   <td className="muted">{m.date_joined ? new Date(m.date_joined).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—"}</td>
                   <td onClick={(e) => e.stopPropagation()}>
