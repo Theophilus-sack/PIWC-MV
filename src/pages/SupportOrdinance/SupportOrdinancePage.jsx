@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Icon } from "../../components/Icon.jsx";
 import { Modal } from "../../components/Modal.jsx";
 import { ScrollX } from "../../components/ScrollX.jsx";
@@ -254,7 +254,7 @@ function SupportSection({ canEdit }) {
   const filtered = (entries ?? []).filter((e) =>
     yearOf(e.support_date) === year &&
     (!supportType || e.support_type === supportType) &&
-    matchesSearch([e.support_type, e.notes], search)
+    matchesSearch([e.support_type, e.members?.name, e.notes], search)
   );
 
   return (
@@ -270,17 +270,18 @@ function SupportSection({ canEdit }) {
       {isError && <div className="badge badge-red" style={{ display: "block", margin: "0 18px 14px", padding: "8px 12px" }}>Couldn't load: {error.message}</div>}
       <ScrollX>
         <table className="table">
-          <thead><tr><th>Type</th><th>Amount (GHS)</th><th>Date</th><th>Notes</th><th></th></tr></thead>
+          <thead><tr><th>Type</th><th>Member</th><th>Amount (GHS)</th><th>Date</th><th>Notes</th><th></th></tr></thead>
           <tbody>
-            {isLoading && <tr><td colSpan={5} className="muted" style={{ padding: 20, textAlign: "center" }}>Loading…</td></tr>}
+            {isLoading && <tr><td colSpan={6} className="muted" style={{ padding: 20, textAlign: "center" }}>Loading…</td></tr>}
             {!isLoading && filtered.length === 0 && (
-              <tr><td colSpan={5} className="muted" style={{ padding: 20, textAlign: "center" }}>
+              <tr><td colSpan={6} className="muted" style={{ padding: 20, textAlign: "center" }}>
                 {(entries ?? []).length ? "No support entries match." : "No support entries logged yet."}
               </td></tr>
             )}
             {filtered.map((e) => (
               <tr key={e.id}>
                 <td style={{ fontWeight: 500 }}>{e.support_type}</td>
+                <td>{e.members?.name || "—"}</td>
                 <td>{Number(e.amount_ghs).toFixed(2)}</td>
                 <td className="muted">{fmtDate(e.support_date)}</td>
                 <td className="muted" style={{ fontSize: 13 }}>{e.notes || "—"}</td>
@@ -302,11 +303,76 @@ function SupportSection({ canEdit }) {
   );
 }
 
+// Click-to-search, click-to-select member lookup — the selected name stays
+// visible (a green check pill, reusing the existing badge-green token) once
+// chosen, instead of collapsing back to a plain text value. Clicking it
+// reopens the search to change the pick; nothing here can clear a selection
+// by accident (search text and selection are separate state, and outside
+// clicks only close the dropdown, never wipe the pick).
+function MemberField({ memberId, memberName, onSelect }) {
+  const [q, setQ] = useState("");
+  const [open, setOpen] = useState(false);
+  const [selectedName, setSelectedName] = useState(memberName ?? "");
+  const wrapRef = useRef(null);
+  const { data: results } = useMembers({ page: 0, pageSize: 8, search: q });
+  const rows = q ? (results?.rows ?? []) : [];
+
+  useEffect(() => {
+    const onOutside = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", onOutside);
+    return () => document.removeEventListener("mousedown", onOutside);
+  }, []);
+
+  const choose = (m) => {
+    onSelect(m.id);
+    setSelectedName(m.name);
+    setQ("");
+    setOpen(false);
+  };
+
+  return (
+    <div className="field" ref={wrapRef} style={{ position: "relative" }}>
+      <label>Member</label>
+      {selectedName && !open ? (
+        <div className="input row between" style={{ cursor: "pointer" }} onClick={() => { setOpen(true); setQ(""); }}>
+          <span className="badge badge-green" style={{ fontWeight: 500 }}>
+            <Icon name="check" size={12} stroke={2.6} /> {selectedName}
+          </span>
+          <span className="muted" style={{ fontSize: 12 }}>Change</span>
+        </div>
+      ) : (
+        <input
+          className="input"
+          placeholder="Search member by name…"
+          autoFocus={open}
+          value={q}
+          onChange={(e) => { setQ(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+        />
+      )}
+      {open && q && (
+        <div className="glass-soft" style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 30, marginTop: 4, maxHeight: 220, overflowY: "auto", padding: 6 }}>
+          {rows.map((m) => (
+            <div
+              key={m.id}
+              className="row between combo-item"
+              style={{ padding: "8px 10px", cursor: "pointer", borderRadius: 8, fontSize: 13.5 }}
+              onClick={() => choose(m)}
+            >
+              <span>{m.name}</span>
+              {m.id === memberId && <Icon name="check" size={13} stroke={2.4} />}
+            </div>
+          ))}
+          {rows.length === 0 && <div className="muted" style={{ fontSize: 12.5, padding: "8px 10px" }}>No matches.</div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MemberSupportFormModal({ entry, onClose }) {
   const [supportType, setSupportType] = useState(entry?.support_type ?? "");
-  const [q, setQ] = useState("");
   const [memberId, setMemberId] = useState(entry?.member_id ?? "");
-  const { data: memberResults } = useMembers({ page: 0, pageSize: 20, search: q });
   const [amount, setAmount] = useState(entry?.amount_ghs ?? 0);
   const [supportDate, setSupportDate] = useState(entry?.support_date ?? new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState(entry?.notes ?? "");
@@ -317,7 +383,8 @@ function MemberSupportFormModal({ entry, onClose }) {
 
   const onSave = async () => {
     if (!supportType.trim()) return setError("Support type is required.");
-    const payload = { support_type: supportType.trim(), member_id: memberId || null, amount_ghs: Number(amount) || 0, support_date: supportDate, notes: notes || null };
+    if (!memberId) return setError("Member is required.");
+    const payload = { support_type: supportType.trim(), member_id: memberId, amount_ghs: Number(amount) || 0, support_date: supportDate, notes: notes || null };
     try {
       if (entry) await updateEntry.mutateAsync({ id: entry.id, ...payload });
       else await createEntry.mutateAsync(payload);
@@ -336,16 +403,7 @@ function MemberSupportFormModal({ entry, onClose }) {
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div className="field"><label>Support type</label><input className="input" placeholder="e.g. Hospital visit, Benevolence" value={supportType} onChange={(e) => setSupportType(e.target.value)} /></div>
-          <div className="field">
-            <label>Member (optional)</label>
-            <input className="input" placeholder="Search member…" value={q} onChange={(e) => setQ(e.target.value)} />
-            {q && (
-              <select className="select" style={{ marginTop: 6 }} value={memberId} onChange={(e) => setMemberId(e.target.value)}>
-                <option value="">— None —</option>
-                {(memberResults?.rows ?? []).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-              </select>
-            )}
-          </div>
+          <MemberField memberId={memberId} memberName={entry?.members?.name ?? ""} onSelect={setMemberId} />
           <div className="grid cols-2" style={{ gap: 12 }}>
             <div className="field"><label>Amount (GHS)</label><input type="number" step="0.01" className="input" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
             <div className="field"><label>Date</label><input type="date" className="input" value={supportDate} onChange={(e) => setSupportDate(e.target.value)} /></div>

@@ -394,6 +394,7 @@ h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.02em; }
 .table td { padding: 12px 14px; border-bottom: 1px solid var(--line-2); vertical-align: middle; }
 .table tr:last-child td { border-bottom: none; }
 .table tr.row-hover:hover td { background: var(--line-2); cursor: pointer; }
+.combo-item:hover { background: var(--line-2); }
 
 /* Bar chart */
 .bar-chart { display: flex; align-items: stretch; gap: 10px; height: 180px; padding: 8px 0 0; }
