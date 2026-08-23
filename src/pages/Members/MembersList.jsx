@@ -109,7 +109,7 @@ export function MembersList() {
             <option value="Twi">Twi Service</option>
           </select>
           <select className="select" style={{ width: 190, height: 40 }} value={sort} onChange={(e) => onSortChange(e.target.value)}>
-            <option value="recent">Sort · Recently joined</option>
+            <option value="recent">Sort · Newest added</option>
             <option value="name">Sort · Name (A-Z)</option>
           </select>
         </div>

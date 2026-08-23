@@ -1,11 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabaseClient.js";
 
+// Newest-added-first (created_at desc) — insertion order, not alphabetical
+// — matching the Members list's default sort. groupByAssembly buckets by
+// service without re-sorting, so this order carries through into each
+// section.
 export function usePresbyters() {
   return useQuery({
     queryKey: ["presbyters"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("presbyters").select("*").order("name");
+      const { data, error } = await supabase.from("presbyters").select("*").order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
     },
@@ -78,6 +82,7 @@ export function useDeleteMinistryLeader() {
   });
 }
 
+// Newest-added-first (created_at desc), same as usePresbyters above.
 export function useMinistryLeadership() {
   return useQuery({
     queryKey: ["ministry-leadership"],
@@ -85,7 +90,7 @@ export function useMinistryLeadership() {
       const { data, error } = await supabase
         .from("ministry_leadership")
         .select("*, ministries(name, assembly)")
-        .order("leader_name");
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
     },

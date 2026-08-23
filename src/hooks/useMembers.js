@@ -1,8 +1,13 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { supabase } from "../lib/supabaseClient.js";
 
+// "recent" sorts by created_at (when the record was added to the system,
+// i.e. insertion order), not date_joined (when the person joined the
+// church) — a bulk-imported member with an old date_joined but a fresh
+// created_at should still show near the top, since this is a "what
+// changed recently in the system" view, not a church-history view.
 const SORTS = {
-  recent: { column: "date_joined", ascending: false },
+  recent: { column: "created_at", ascending: false },
   name: { column: "name", ascending: true },
 };
 
