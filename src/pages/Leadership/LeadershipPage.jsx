@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Icon } from "../../components/Icon.jsx";
 import { Modal } from "../../components/Modal.jsx";
+import { SearchInput } from "../../components/SearchInput.jsx";
 import { useAuth } from "../../lib/auth.jsx";
 import { accessLevel } from "../../lib/rbac.js";
 import { groupByAssembly } from "../../lib/assembly.js";
@@ -10,6 +11,8 @@ import {
   useCreateMinistryLeader, useUpdateMinistryLeader, useDeleteMinistryLeader,
 } from "../../hooks/useLeadership.js";
 import { useMinistries } from "../../hooks/useMinistries.js";
+
+const PORTFOLIOS = ["Elder", "Deacon", "Deaconess"];
 
 export function LeadershipPage() {
   const { role } = useAuth();
@@ -25,8 +28,22 @@ export function LeadershipPage() {
   const deletePresbyter = useDeletePresbyter();
   const deleteLeader = useDeleteMinistryLeader();
 
-  const presbyterSections = groupByAssembly(presbyters);
-  const leadershipSections = groupByAssembly(leadership, (l) => l.ministries?.assembly ?? null);
+  // Both lists are fetched wholesale (no server pagination), so filters
+  // narrow client-side before grouping — same pattern groupByAssembly
+  // itself already uses, just one more pass in front of it.
+  const [portfolioFilter, setPortfolioFilter] = useState("");
+  const [presbyterAssemblyFilter, setPresbyterAssemblyFilter] = useState("");
+  const filteredPresbyters = (presbyters ?? []).filter((p) =>
+    (!portfolioFilter || p.portfolio === portfolioFilter) &&
+    (!presbyterAssemblyFilter || p.assembly === presbyterAssemblyFilter)
+  );
+  const presbyterSections = groupByAssembly(filteredPresbyters);
+
+  const [leadershipQuery, setLeadershipQuery] = useState("");
+  const filteredLeadership = (leadership ?? []).filter((l) =>
+    !leadershipQuery || (l.ministries?.name ?? "").toLowerCase().includes(leadershipQuery.toLowerCase())
+  );
+  const leadershipSections = groupByAssembly(filteredLeadership, (l) => l.ministries?.assembly ?? null);
 
   return (
     <div className="fade-in">
@@ -34,7 +51,7 @@ export function LeadershipPage() {
         <div>
           <div className="eyebrow" style={{ marginBottom: 6 }}>Directory</div>
           <h1>Leadership</h1>
-          <p>Presbyters and ministry leadership, by service.</p>
+          <p>Presbyters and ministry & department leadership, by service.</p>
         </div>
       </div>
 
@@ -44,13 +61,27 @@ export function LeadershipPage() {
             <h3 style={{ fontSize: 16 }}>Presbyters</h3>
             {canManage && <button className="btn btn-ghost" onClick={() => setAddingPresbyter(true)}><Icon name="plus" size={14} /> Add</button>}
           </div>
+          <div className="row" style={{ gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+            <select className="select" style={{ flex: "1 1 140px" }} value={portfolioFilter} onChange={(e) => setPortfolioFilter(e.target.value)}>
+              <option value="">All portfolios</option>
+              {PORTFOLIOS.map((p) => <option key={p} value={p}>{p}</option>)}
+            </select>
+            <select className="select" style={{ flex: "1 1 140px" }} value={presbyterAssemblyFilter} onChange={(e) => setPresbyterAssemblyFilter(e.target.value)}>
+              <option value="">All services</option>
+              <option value="English">English Service</option>
+              <option value="Twi">Twi Service</option>
+            </select>
+          </div>
           {presbytersLoading && <p className="muted">Loading…</p>}
           {presbyterSections.map((section) => (
             <div key={section.label} style={{ marginBottom: 10 }}>
               <div className="eyebrow" style={{ marginTop: 8 }}>{section.label}</div>
               {section.items.map((p) => (
                 <div key={p.id} className="row between" style={{ padding: "10px 0", borderTop: "1px solid var(--line-2)" }}>
-                  <span style={{ fontWeight: 500, fontSize: 14 }}>{p.name}</span>
+                  <div className="row" style={{ gap: 8 }}>
+                    <span style={{ fontWeight: 500, fontSize: 14 }}>{p.name}</span>
+                    {p.portfolio && <span className="badge badge-blue" style={{ fontSize: 10 }}>{p.portfolio}</span>}
+                  </div>
                   <div className="row" style={{ gap: 8 }}>
                     <span className="muted mono" style={{ fontSize: 12.5 }}>{p.contact || "—"}</span>
                     {canManage && (
@@ -69,14 +100,17 @@ export function LeadershipPage() {
               ))}
             </div>
           ))}
-          {!presbytersLoading && presbyterSections.length === 0 && <p className="muted" style={{ fontSize: 13 }}>None recorded yet.</p>}
+          {!presbytersLoading && presbyterSections.length === 0 && (
+            <p className="muted" style={{ fontSize: 13 }}>{(presbyters ?? []).length ? "No presbyters match." : "None recorded yet."}</p>
+          )}
         </div>
 
         <div className="glass card">
           <div className="row between" style={{ marginBottom: 12 }}>
-            <h3 style={{ fontSize: 16 }}>Ministry leadership</h3>
+            <h3 style={{ fontSize: 16 }}>Ministry & Department Leadership</h3>
             {canManage && <button className="btn btn-ghost" onClick={() => setAddingLeader(true)}><Icon name="plus" size={14} /> Add</button>}
           </div>
+          <SearchInput value={leadershipQuery} onChange={setLeadershipQuery} placeholder="Search ministry or department…" style={{ marginBottom: 12 }} />
           {leadershipLoading && <p className="muted">Loading…</p>}
           {leadershipSections.map((section) => (
             <div key={section.label} style={{ marginBottom: 10 }}>
@@ -105,7 +139,9 @@ export function LeadershipPage() {
               ))}
             </div>
           ))}
-          {!leadershipLoading && leadershipSections.length === 0 && <p className="muted" style={{ fontSize: 13 }}>None recorded yet.</p>}
+          {!leadershipLoading && leadershipSections.length === 0 && (
+            <p className="muted" style={{ fontSize: 13 }}>{(leadership ?? []).length ? "No ministries or departments match." : "None recorded yet."}</p>
+          )}
         </div>
       </div>
 
@@ -137,6 +173,7 @@ function ModalShell({ title, onClose, children }) {
 function PresbyterModal({ presbyter, onClose }) {
   const [form, setForm] = useState({
     name: presbyter?.name ?? "", contact: presbyter?.contact ?? "", assembly: presbyter?.assembly ?? "English",
+    portfolio: presbyter?.portfolio ?? "Elder",
   });
   const [error, setError] = useState(null);
   const create = useCreatePresbyter();
@@ -160,11 +197,16 @@ function PresbyterModal({ presbyter, onClose }) {
         <div className="field"><label>Name</label><input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
         <div className="field"><label>Contact</label><input className="input" value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} /></div>
         <div className="field">
+          <label>Portfolio</label>
+          <select className="select" value={form.portfolio} onChange={(e) => setForm({ ...form, portfolio: e.target.value })}>
+            {PORTFOLIOS.map((p) => <option key={p} value={p}>{p}</option>)}
+          </select>
+        </div>
+        <div className="field">
           <label>Service</label>
           <select className="select" value={form.assembly} onChange={(e) => setForm({ ...form, assembly: e.target.value })}>
             <option value="English">English Service</option>
             <option value="Twi">Twi Service</option>
-            <option value="Both">Departments</option>
           </select>
         </div>
       </div>
