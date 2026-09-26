@@ -7,7 +7,7 @@ import { useMinistries, useAddMinistryMemberships } from "../../hooks/useMinistr
 import { groupByAssembly } from "../../lib/assembly.js";
 import { COUNTRIES } from "../../lib/countries.js";
 
-const MARITAL_STATUSES = ["Single", "Married", "Divorced", "Widowed", "Engaged", "Separated"];
+const MARITAL_STATUSES = ["Single", "Married", "Divorced", "Widowed", "Engaged", "Separated", "Child", "Toddler"];
 
 const emptyForm = {
   name: "", contact: "", email: "", gender: "Female", residence: "",

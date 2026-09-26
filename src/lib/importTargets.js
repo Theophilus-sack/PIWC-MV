@@ -22,7 +22,7 @@ function normalizeStatus(v) {
   return STATUS_VALUES.includes(s) ? s : null;
 }
 
-const MARITAL_STATUS_VALUES = ["Single", "Married", "Divorced", "Widowed", "Engaged", "Separated"];
+const MARITAL_STATUS_VALUES = ["Single", "Married", "Divorced", "Widowed", "Engaged", "Separated", "Child", "Toddler"];
 function normalizeMaritalStatus(v) {
   const s = String(v ?? "").trim().toLowerCase();
   return MARITAL_STATUS_VALUES.find((m) => m.toLowerCase() === s) ?? null;
@@ -199,7 +199,7 @@ export const IMPORT_TARGETS = {
       const maritalRaw = (raw.marital_status ?? "").trim();
       if (maritalRaw) {
         maritalStatus = normalizeMaritalStatus(maritalRaw);
-        if (!maritalStatus) errors.push("Invalid marital status (expected Single/Married/Divorced/Widowed/Engaged/Separated)");
+        if (!maritalStatus) errors.push("Invalid marital status (expected Single/Married/Divorced/Widowed/Engaged/Separated/Child/Toddler)");
       }
 
       const ministryIds = [];

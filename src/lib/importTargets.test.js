@@ -138,9 +138,14 @@ describe("members.validateRow", () => {
     expect(result.row.ministryIds).toEqual(["m1", "d1"]);
   });
 
-  it("normalizes marital_status case-insensitively against the 6 allowed values", () => {
+  it("normalizes marital_status case-insensitively against the 8 allowed values", () => {
     expect(validateRow({ name: "A", marital_status: "MARRIED" }).row.marital_status).toBe("Married");
     expect(validateRow({ name: "A", marital_status: "single" }).row.marital_status).toBe("Single");
+  });
+
+  it("accepts Child and Toddler as marital_status values", () => {
+    expect(validateRow({ name: "A", marital_status: "child" }).row.marital_status).toBe("Child");
+    expect(validateRow({ name: "A", marital_status: "TODDLER" }).row.marital_status).toBe("Toddler");
   });
 
   it("allows a blank marital_status", () => {

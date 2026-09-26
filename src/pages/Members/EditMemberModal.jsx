@@ -7,7 +7,7 @@ import { useMinistries, useMemberMinistries, useAddMinistryMemberships, useRemov
 import { groupByAssembly } from "../../lib/assembly.js";
 import { COUNTRIES } from "../../lib/countries.js";
 
-const MARITAL_STATUSES = ["Single", "Married", "Divorced", "Widowed", "Engaged", "Separated"];
+const MARITAL_STATUSES = ["Single", "Married", "Divorced", "Widowed", "Engaged", "Separated", "Child", "Toddler"];
 
 // Direct field editor for an existing member — unlike AddMemberModal's
 // two-step first-timer flow (which only makes sense at intake), editing

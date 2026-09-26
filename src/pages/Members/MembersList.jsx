@@ -9,6 +9,7 @@ import { useMinistries } from "../../hooks/useMinistries.js";
 import { useAuth } from "../../lib/auth.jsx";
 import { accessLevel } from "../../lib/rbac.js";
 import { ageBracketLabel } from "../../lib/ageBracket.js";
+import { formatDateOnly } from "../../lib/formatDate.js";
 import { AddMemberModal } from "./AddMemberModal.jsx";
 import { EditMemberModal } from "./EditMemberModal.jsx";
 import { CsvImportModal, ExportCsvModal } from "../../components/CsvImportExport.jsx";
@@ -143,7 +144,7 @@ export function MembersList() {
                 <th>Phone</th>
                 <th>Gender</th>
                 <th>Age Bracket</th>
-                <th>Status</th>
+                <th>Date of Birth</th>
                 <th>Joined</th>
                 <th></th>
               </tr>
@@ -170,7 +171,7 @@ export function MembersList() {
                   <td className="mono muted" style={{ fontSize: 12.5 }}>{m.contact || "—"}</td>
                   <td><span className="badge">{m.gender || "—"}</span></td>
                   <td className="muted">{ageBracketLabel(m.date_of_birth)}</td>
-                  <td><span className={"badge" + (m.status === "first-timer" ? " badge-gold" : "")}>{m.status}</span></td>
+                  <td className="muted">{formatDateOnly(m.date_of_birth)}</td>
                   <td className="muted">{m.date_joined ? new Date(m.date_joined).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—"}</td>
                   <td onClick={(e) => e.stopPropagation()}>
                     <div className="row" style={{ gap: 4 }}>
