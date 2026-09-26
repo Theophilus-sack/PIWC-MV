@@ -102,7 +102,7 @@ export function MemberPicker({ value, selectedMember, onSelect, onChange, placeh
             >
               <div style={{ fontWeight: 500, fontSize: 13.5 }}>{m.name}</div>
               <div className="faint" style={{ fontSize: 11 }}>
-                {m.id.slice(0, 8)}…{m.contact ? ` · ${m.contact}` : ""}
+                {m.member_id || `${m.id.slice(0, 8)}…`}{m.contact ? ` · ${m.contact}` : ""}
               </div>
             </div>
           ))}

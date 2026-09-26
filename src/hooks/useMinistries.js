@@ -60,9 +60,10 @@ export function useDeleteMinistry() {
 
 // Members belonging to one ministry — used by Groups/Ministries (roster,
 // detailed Members-style view) and by the Ministry Leader's scoped views.
-// members(id, ...) carries the same id the Members module routes to
-// (/members/:id) — no separate "member number" field exists in the schema.
-// Only non-administrative member fields are selected here; RLS (see
+// members.id is the uuid the Members module routes to (/members/:id);
+// members.member_id is the separate human-readable code (e.g.
+// "PIWC-2026-0021") shown as the roster's "Member ID" column. Only
+// non-administrative member fields are selected here; RLS (see
 // members_select/ministry_members_select) is what actually scopes which
 // rows a Ministry Leader can see, this query just asks for what the
 // roster UI displays.
@@ -72,13 +73,33 @@ export function useMinistryRoster(ministryId) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("ministry_members")
-        .select("id, member_id, members(id, name, gender, contact, status, residence)")
+        .select("id, member_id, members(id, member_id, name, gender, contact, status, residence)")
         .eq("ministry_id", ministryId)
         .order("name", { referencedTable: "members" });
       if (error) throw error;
       return data ?? [];
     },
     enabled: Boolean(ministryId),
+  });
+}
+
+// Reverse of useMinistryRoster — given a member, which ministries/
+// departments they belong to (assembly='Both' entries are Departments,
+// English/Twi entries are Ministries — same join table, just a different
+// direction of lookup). Powers MemberDetail's Department/Ministry fields
+// and EditMemberModal's picker.
+export function useMemberMinistries(memberId) {
+  return useQuery({
+    queryKey: ["member-ministries", memberId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ministry_members")
+        .select("id, ministry_id, ministries(id, name, assembly)")
+        .eq("member_id", memberId);
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: Boolean(memberId),
   });
 }
 
@@ -112,10 +133,11 @@ export function useAddMinistryMemberships() {
         .insert(ministryIds.map((ministryId) => ({ ministry_id: ministryId, member_id: memberId })));
       if (error) throw error;
     },
-    onSuccess: (_data, { ministryIds }) => {
+    onSuccess: (_data, { memberId, ministryIds }) => {
       for (const ministryId of ministryIds) {
         queryClient.invalidateQueries({ queryKey: ["ministry-roster", ministryId] });
       }
+      queryClient.invalidateQueries({ queryKey: ["member-ministries", memberId] });
     },
   });
 }
@@ -123,13 +145,17 @@ export function useAddMinistryMemberships() {
 export function useRemoveMinistryMember() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ministryId }) => {
+    // memberId is optional — existing callers (Groups/Ministries roster)
+    // don't pass it and behave exactly as before; EditMemberModal's
+    // Department/Ministry picker does, so its own cache refreshes too.
+    mutationFn: async ({ id, ministryId, memberId }) => {
       const { error } = await supabase.from("ministry_members").delete().eq("id", id);
       if (error) throw error;
-      return { ministryId };
+      return { ministryId, memberId };
     },
-    onSuccess: ({ ministryId }) => {
+    onSuccess: ({ ministryId, memberId }) => {
       queryClient.invalidateQueries({ queryKey: ["ministry-roster", ministryId] });
+      if (memberId) queryClient.invalidateQueries({ queryKey: ["member-ministries", memberId] });
     },
   });
 }

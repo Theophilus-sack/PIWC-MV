@@ -1,8 +1,13 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { supabase } from "../lib/supabaseClient.js";
 
+// "recent" sorts by created_at (when the record was added to the system,
+// i.e. insertion order), not date_joined (when the person joined the
+// church) — a bulk-imported member with an old date_joined but a fresh
+// created_at should still show near the top, since this is a "what
+// changed recently in the system" view, not a church-history view.
 const SORTS = {
-  recent: { column: "date_joined", ascending: false },
+  recent: { column: "created_at", ascending: false },
   name: { column: "name", ascending: true },
 };
 
@@ -125,22 +130,24 @@ export function useAllMemberContacts() {
 }
 
 // Bulk variant for CSV import — one insert per batch, same shape as
-// useBulkCreateManualContacts. Each row may carry a ministryId (resolved
-// client-side in lib/importTargets.js from a free-text "ministry" column);
-// insert() with .select() returns rows in the same order they were
-// given, so the ministry_members rows can be built by matching index
-// rather than a second round-trip per member.
+// useBulkCreateManualContacts. Each row may carry a ministryIds array
+// (resolved client-side in lib/importTargets.js from the free-text
+// "ministry" and "department" columns — a member can hold one or more of
+// each, both via the same ministry_members join table); insert() with
+// .select() returns rows in the same order they were given, so the
+// ministry_members rows can be built by matching index rather than a
+// second round-trip per member.
 export function useBulkCreateMembers() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (members) => {
-      const rows = members.map(({ ministryId, ...m }) => m);
+      const rows = members.map(({ ministryIds, ...m }) => m);
       const { data, error } = await supabase.from("members").insert(rows).select("id");
       if (error) throw error;
 
-      const ministryRows = members
-        .map((m, i) => (m.ministryId ? { ministry_id: m.ministryId, member_id: data[i].id } : null))
-        .filter(Boolean);
+      const ministryRows = members.flatMap((m, i) =>
+        (m.ministryIds ?? []).map((ministryId) => ({ ministry_id: ministryId, member_id: data[i].id }))
+      );
       if (ministryRows.length) {
         const { error: mmError } = await supabase.from("ministry_members").insert(ministryRows);
         if (mmError) throw mmError;
@@ -156,6 +163,21 @@ export function useDeleteMember() {
   return useMutation({
     mutationFn: async (id) => {
       const { error } = await supabase.from("members").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["members"] }),
+  });
+}
+
+// Bulk selection delete (MembersList's Select/Select all toolbar) — one
+// request for however many ids are selected, rather than one per row.
+// The on_member_delete audit trigger still fires once per row even
+// inside this single multi-row DELETE, same as any other bulk statement.
+export function useBulkDeleteMembers() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids) => {
+      const { error } = await supabase.from("members").delete().in("id", ids);
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["members"] }),

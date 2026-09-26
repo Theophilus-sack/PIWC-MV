@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Icon } from "../../components/Icon.jsx";
 import { Modal } from "../../components/Modal.jsx";
 import { ScrollX } from "../../components/ScrollX.jsx";
+import { SearchInput } from "../../components/SearchInput.jsx";
 import { Avatar, Checkbox, Switch } from "../../components/primitives.jsx";
 import { useAuth } from "../../lib/auth.jsx";
 import { accessLevel } from "../../lib/rbac.js";
@@ -334,13 +335,13 @@ function SendTab({ role, profile, access, config, prefillBody, onConsumePrefill 
           <div className="badge badge-blue" style={{ alignSelf: "flex-start" }}>Sending to: General (all members)</div>
         )}
 
-        {/* Explicit height/padding here rather than relying on the shared
-            .search default — self-contained so this box's size can't drift
-            if that class is ever touched for some other page later. */}
-        <div className="search" style={{ maxWidth: "none", height: 46, padding: "0 12px" }}>
-          <Icon name="search" size={15} />
-          <input placeholder="Search members & contacts…" value={q} onChange={(e) => setQ(e.target.value)} />
-        </div>
+        {/* SearchInput pins flex: "0 0 auto" so it stays compact at every
+            filter — General included — instead of stretching to fill
+            leftover height as a sibling of the candidates list below,
+            which is what a bare .search (flex:1, meant for horizontal
+            filter-bar rows) did in this vertical panel. One instance,
+            reused for every recipient mode/filter combination. */}
+        <SearchInput value={q} onChange={setQ} placeholder="Search members & contacts…" />
 
         {showMembers && (
           <div className="row" style={{ gap: 8 }}>

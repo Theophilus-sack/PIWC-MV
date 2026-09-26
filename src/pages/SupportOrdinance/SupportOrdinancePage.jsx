@@ -254,7 +254,7 @@ function SupportSection({ canEdit }) {
   const filtered = (entries ?? []).filter((e) =>
     yearOf(e.support_date) === year &&
     (!supportType || e.support_type === supportType) &&
-    matchesSearch([e.support_type, e.notes], search)
+    matchesSearch([e.support_type, e.members?.name, e.notes], search)
   );
 
   return (
@@ -270,17 +270,18 @@ function SupportSection({ canEdit }) {
       {isError && <div className="badge badge-red" style={{ display: "block", margin: "0 18px 14px", padding: "8px 12px" }}>Couldn't load: {error.message}</div>}
       <ScrollX>
         <table className="table">
-          <thead><tr><th>Type</th><th>Amount (GHS)</th><th>Date</th><th>Notes</th><th></th></tr></thead>
+          <thead><tr><th>Type</th><th>Member</th><th>Amount (GHS)</th><th>Date</th><th>Notes</th><th></th></tr></thead>
           <tbody>
-            {isLoading && <tr><td colSpan={5} className="muted" style={{ padding: 20, textAlign: "center" }}>Loading…</td></tr>}
+            {isLoading && <tr><td colSpan={6} className="muted" style={{ padding: 20, textAlign: "center" }}>Loading…</td></tr>}
             {!isLoading && filtered.length === 0 && (
-              <tr><td colSpan={5} className="muted" style={{ padding: 20, textAlign: "center" }}>
+              <tr><td colSpan={6} className="muted" style={{ padding: 20, textAlign: "center" }}>
                 {(entries ?? []).length ? "No support entries match." : "No support entries logged yet."}
               </td></tr>
             )}
             {filtered.map((e) => (
               <tr key={e.id}>
                 <td style={{ fontWeight: 500 }}>{e.support_type}</td>
+                <td>{e.members?.name || "—"}</td>
                 <td>{Number(e.amount_ghs).toFixed(2)}</td>
                 <td className="muted">{fmtDate(e.support_date)}</td>
                 <td className="muted" style={{ fontSize: 13 }}>{e.notes || "—"}</td>
@@ -315,7 +316,8 @@ function MemberSupportFormModal({ entry, onClose }) {
 
   const onSave = async () => {
     if (!supportType.trim()) return setError("Support type is required.");
-    const payload = { support_type: supportType.trim(), member_id: memberId || null, amount_ghs: Number(amount) || 0, support_date: supportDate, notes: notes || null };
+    if (!memberId) return setError("Member is required.");
+    const payload = { support_type: supportType.trim(), member_id: memberId, amount_ghs: Number(amount) || 0, support_date: supportDate, notes: notes || null };
     try {
       if (entry) await updateEntry.mutateAsync({ id: entry.id, ...payload });
       else await createEntry.mutateAsync(payload);
@@ -335,7 +337,7 @@ function MemberSupportFormModal({ entry, onClose }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div className="field"><label>Support type</label><input className="input" placeholder="e.g. Hospital visit, Benevolence" value={supportType} onChange={(e) => setSupportType(e.target.value)} /></div>
           <div className="field">
-            <label>Member (optional)</label>
+            <label>Member</label>
             <MemberPicker
               value={memberId}
               onSelect={(m) => setMemberId(m.id)}

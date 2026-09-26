@@ -3,11 +3,11 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// Static checks for 0021_ministry_leader_readonly_groups.sql — see
+// Static checks for 0024_ministry_leader_readonly_groups.sql — see
 // phase2_rls.test.js's header comment for what this style of test can and
 // can't prove. What matters here: Ministry/Department Leader write access
 // to ministry_members and ministry_activities has been fully withdrawn
-// (was "own ministry" scoped before 0021), while their read access to
+// (was "own ministry" scoped before 0024), while their read access to
 // their own ministry's roster/activities/members is untouched, and a
 // leader with no ministry_id assigned still can't fall back to seeing
 // everyone else's.
@@ -22,7 +22,7 @@ function allMigrationSql() {
     .join("\n\n");
 }
 
-// "Last" matters — 0021 intentionally re-defines these after dropping
+// "Last" matters — 0024 intentionally re-defines these after dropping
 // 0002's/0016's originals, same pattern 0002 used on Phase 1's
 // ministries_write.
 function policyBody(sql, policyName) {
@@ -35,7 +35,7 @@ function policyBody(sql, policyName) {
   return matches[matches.length - 1];
 }
 
-describe("0021 ministry leader read-only RLS (static)", () => {
+describe("0024 ministry leader read-only RLS (static)", () => {
   let sql;
   beforeAll(() => { sql = allMigrationSql(); });
 
@@ -66,7 +66,7 @@ describe("0021 ministry leader read-only RLS (static)", () => {
     });
   }
 
-  it("members_select still scopes a Ministry Leader to members in their own ministry (via ministry_members) — unchanged by 0021", () => {
+  it("members_select still scopes a Ministry Leader to members in their own ministry (via ministry_members) — unchanged by 0024", () => {
     const body = policyBody(sql, "members_select");
     expect(body).toMatch(/'ministry_leader'[\s\S]*?ministry_members/);
     expect(body).toMatch(/current_ministry_id\(\)/);

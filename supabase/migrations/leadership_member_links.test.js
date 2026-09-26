@@ -3,7 +3,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// Static checks for 0022_leadership_member_links.sql — see
+// Static checks for 0025_leadership_member_links.sql — see
 // phase2_rls.test.js's header comment for what this style of test can and
 // can't prove without a live Postgres instance. What matters here: the
 // member_id foreign key actually exists (so a fabricated/nonexistent id
@@ -33,19 +33,19 @@ function policyBody(sql, policyName) {
   return matches[matches.length - 1];
 }
 
-describe("0022 leadership member links (static)", () => {
+describe("0025 leadership member links (static)", () => {
   let sql;
   let ownSql;
   beforeAll(() => {
     sql = allMigrationSql();
-    // Scoped to 0022's own file for assertions that would otherwise false-
+    // Scoped to 0025's own file for assertions that would otherwise false-
     // positive against unrelated tables in the wider schema — e.g.
     // ministry_members.member_id and attendance_records.member_id are
     // legitimately "not null" (they're plain join/fact tables, not
     // migrated-from-free-text Leadership columns), so a blanket search
     // across every migration for "member_id ... not null" would flag
     // those instead of proving anything about presbyters/ministry_leadership.
-    ownSql = readFileSync(join(migrationsDir, "0022_leadership_member_links.sql"), "utf8");
+    ownSql = readFileSync(join(migrationsDir, "0025_leadership_member_links.sql"), "utf8");
   });
 
   it("presbyters.member_id references members(id) with ON DELETE RESTRICT", () => {
@@ -64,7 +64,7 @@ describe("0022 leadership member links (static)", () => {
     expect(sql).toMatch(/portfolio text check \(portfolio in \('Elder', 'Deacon', 'Deaconess'\)\)/);
   });
 
-  it("0022 never forces its new member_id columns to NOT NULL — that would break every pre-existing row", () => {
+  it("0025 never forces its new member_id columns to NOT NULL — that would break every pre-existing row", () => {
     expect(ownSql).not.toMatch(/alter column member_id set not null/i);
     expect(ownSql).not.toMatch(/member_id uuid not null/i);
   });
@@ -91,7 +91,7 @@ describe("0022 leadership member links (static)", () => {
     );
   });
 
-  it("Leadership write RLS is unchanged by 0022 — still Super Admin/Pastor/Secretary, not Ministry Leader/Comms/Finance", () => {
+  it("Leadership write RLS is unchanged by 0025 — still Super Admin/Pastor/Secretary, not Ministry Leader/Comms/Finance", () => {
     for (const table of ["presbyters", "ministry_leadership"]) {
       const body = policyBody(sql, `${table}_write`);
       expect(body).toContain("'super_admin'");

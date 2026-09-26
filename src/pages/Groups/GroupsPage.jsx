@@ -126,7 +126,7 @@ function Roster({ ministry, role, onDeleted }) {
 
   const rows = roster ?? [];
   const filtered = rows.filter((r) =>
-    matchesSearch([r.members?.name, r.members?.id, r.members?.contact, r.members?.residence, r.members?.status], search)
+    matchesSearch([r.members?.name, r.members?.member_id, r.members?.contact, r.members?.residence, r.members?.status], search)
   );
   const columnCount = canManage ? 7 : 6;
 
@@ -197,7 +197,7 @@ function Roster({ ministry, role, onDeleted }) {
                         <span style={{ fontWeight: 500, fontSize: 14 }}>{m?.name || "—"}</span>
                       </div>
                     </td>
-                    <td className="mono muted" style={{ fontSize: 12 }}>{m?.id ? `${m.id.slice(0, 8)}…` : "—"}</td>
+                    <td className="mono muted" style={{ fontSize: 12 }}>{m?.member_id || "—"}</td>
                     <td><span className="badge">{m?.gender || "—"}</span></td>
                     <td className="mono muted" style={{ fontSize: 12.5 }}>{m?.contact || "—"}</td>
                     <td className="muted">{m?.residence || "—"}</td>

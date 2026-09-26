@@ -4,12 +4,12 @@ import { supabase } from "../lib/supabaseClient.js";
 // Five tables, identical list/create/update/delete shape — one factory
 // instead of duplicating the same pair five times, same pattern as
 // useFinance.js's monthlyPerformanceHooks().
-function simpleCrudHooks(table, queryKey, orderBy) {
+function simpleCrudHooks(table, queryKey, orderBy, select = "*") {
   function useList() {
     return useQuery({
       queryKey: [queryKey],
       queryFn: async () => {
-        const { data, error } = await supabase.from(table).select("*").order(orderBy, { ascending: false });
+        const { data, error } = await supabase.from(table).select(select).order(orderBy, { ascending: false });
         if (error) throw error;
         return data ?? [];
       },
@@ -52,9 +52,12 @@ export const {
   useList: useLifeEvents, useCreate: useCreateLifeEvent, useUpdate: useUpdateLifeEvent, useDelete: useDeleteLifeEvent,
 } = simpleCrudHooks("life_events", "life-events", "event_date");
 
+// member_id is now a required FK (Add/Edit Support Entry always links a
+// real member) — the joined name is what the list column and the edit
+// modal's pre-filled member picker both display.
 export const {
   useList: useMemberSupport, useCreate: useCreateMemberSupport, useUpdate: useUpdateMemberSupport, useDelete: useDeleteMemberSupport,
-} = simpleCrudHooks("member_support", "member-support", "support_date");
+} = simpleCrudHooks("member_support", "member-support", "support_date", "*, members(name)");
 
 export const {
   useList: useSoulsWon, useCreate: useCreateSoulWon, useUpdate: useUpdateSoulWon, useDelete: useDeleteSoulWon,

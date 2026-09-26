@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabaseClient.js";
 
-// Postgres error codes surfaced by migration 0022's constraints:
+// Postgres error codes surfaced by migration 0025's constraints:
 // 23505 = unique_violation (duplicate presbyter/portfolio assignment),
 // 23503 = foreign_key_violation (member_id doesn't reference a real row —
 // shouldn't happen via the UI's MemberPicker, but the FK is the actual
@@ -15,9 +15,12 @@ export function friendlyLeadershipError(err, { duplicateMessage }) {
 
 // Joins the linked member (when member_id is set) so the UI can prefer
 // the live members.name/contact over the legacy snapshot columns — see
-// migration 0022's header comment for why both still exist side by side.
+// migration 0025's header comment for why both still exist side by side.
 // Only the fields the roster actually displays are selected, not the
-// full members row.
+// full members row. Newest-added-first (created_at desc) — insertion
+// order, not alphabetical — matching the Members list's default sort.
+// groupByAssembly buckets by service without re-sorting, so this order
+// carries through into each section.
 export function usePresbyters() {
   return useQuery({
     queryKey: ["presbyters"],
@@ -25,7 +28,7 @@ export function usePresbyters() {
       const { data, error } = await supabase
         .from("presbyters")
         .select("id, name, contact, assembly, portfolio, member_id, created_at, members(id, name, contact, gender, status)")
-        .order("name");
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
     },
@@ -98,6 +101,7 @@ export function useDeleteMinistryLeader() {
   });
 }
 
+// Newest-added-first (created_at desc), same as usePresbyters above.
 export function useMinistryLeadership() {
   return useQuery({
     queryKey: ["ministry-leadership"],
@@ -105,7 +109,7 @@ export function useMinistryLeadership() {
       const { data, error } = await supabase
         .from("ministry_leadership")
         .select("*, ministries(name, assembly), members(id, name, contact, gender, status)")
-        .order("leader_name");
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
     },
