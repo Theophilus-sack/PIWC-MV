@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { can, accessLevel, canManageRoles, navForRole, ROLES, MODULES } from "./rbac.js";
+import { can, accessLevel, canManageRoles, canManageGroupRoster, navForRole, ROLES, MODULES } from "./rbac.js";
 
 // Transcribed independently from the spec's permission matrix (not copied
 // from rbac.js's internal MATRIX) so this test actually catches a
@@ -67,5 +67,22 @@ describe("rbac permission matrix", () => {
     expect(accessLevel("pastor", "finance")).toBe("view");
     expect(accessLevel("secretary", "finance")).toBeNull();
     expect(accessLevel("ministry_leader", "finance")).toBeNull();
+  });
+
+  describe("canManageGroupRoster (Groups/Ministries: 'own' is view-only, not management)", () => {
+    it("Super Admin ('full') can manage the roster", () => {
+      expect(canManageGroupRoster("super_admin")).toBe(true);
+    });
+
+    it("Ministry Leader ('own') canNOT manage the roster — regression guard for the full/own conflation bug", () => {
+      expect(accessLevel("ministry_leader", "groups")).toBe("own"); // still "own" in the matrix...
+      expect(canManageGroupRoster("ministry_leader")).toBe(false); // ...but that no longer means manage access
+    });
+
+    it("every other role (view/none) also can't manage the roster", () => {
+      for (const role of ROLES.filter((r) => r !== "super_admin")) {
+        expect(canManageGroupRoster(role)).toBe(false);
+      }
+    });
   });
 });

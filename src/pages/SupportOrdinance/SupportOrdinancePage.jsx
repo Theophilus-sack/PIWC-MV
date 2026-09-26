@@ -5,7 +5,7 @@ import { ScrollX } from "../../components/ScrollX.jsx";
 import { YearNav } from "../../components/YearNav.jsx";
 import { useAuth } from "../../lib/auth.jsx";
 import { accessLevel } from "../../lib/rbac.js";
-import { useMembers } from "../../hooks/useMembers.js";
+import { MemberPicker } from "../../components/MemberPicker.jsx";
 import {
   useLifeEvents, useCreateLifeEvent, useUpdateLifeEvent, useDeleteLifeEvent,
   useMemberSupport, useCreateMemberSupport, useUpdateMemberSupport, useDeleteMemberSupport,
@@ -304,9 +304,7 @@ function SupportSection({ canEdit }) {
 
 function MemberSupportFormModal({ entry, onClose }) {
   const [supportType, setSupportType] = useState(entry?.support_type ?? "");
-  const [q, setQ] = useState("");
   const [memberId, setMemberId] = useState(entry?.member_id ?? "");
-  const { data: memberResults } = useMembers({ page: 0, pageSize: 20, search: q });
   const [amount, setAmount] = useState(entry?.amount_ghs ?? 0);
   const [supportDate, setSupportDate] = useState(entry?.support_date ?? new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState(entry?.notes ?? "");
@@ -338,13 +336,12 @@ function MemberSupportFormModal({ entry, onClose }) {
           <div className="field"><label>Support type</label><input className="input" placeholder="e.g. Hospital visit, Benevolence" value={supportType} onChange={(e) => setSupportType(e.target.value)} /></div>
           <div className="field">
             <label>Member (optional)</label>
-            <input className="input" placeholder="Search member…" value={q} onChange={(e) => setQ(e.target.value)} />
-            {q && (
-              <select className="select" style={{ marginTop: 6 }} value={memberId} onChange={(e) => setMemberId(e.target.value)}>
-                <option value="">— None —</option>
-                {(memberResults?.rows ?? []).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-              </select>
-            )}
+            <MemberPicker
+              value={memberId}
+              onSelect={(m) => setMemberId(m.id)}
+              onChange={() => setMemberId("")}
+              placeholder="Search member…"
+            />
           </div>
           <div className="grid cols-2" style={{ gap: 12 }}>
             <div className="field"><label>Amount (GHS)</label><input type="number" step="0.01" className="input" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
@@ -370,6 +367,17 @@ const ORDINANCE_TYPES = [
   { key: "souls-won", label: "Souls Won" },
 ];
 
+// Stored as the short codes the DB check constraint accepts; displayed with
+// "Assembly" appended so the dropdown/table read the same as the rest of
+// the app's English/Twi assembly split (see FinancePage's tithes split).
+const ASSEMBLY_OPTIONS = [
+  { value: "English", label: "English Assembly" },
+  { value: "Twi", label: "Twi Assembly" },
+];
+const ASSEMBLY_LABELS = Object.fromEntries(ASSEMBLY_OPTIONS.map((o) => [o.value, o.label]));
+const fmtAssembly = (v) => ASSEMBLY_LABELS[v] || "—";
+const todayISO = () => new Date().toISOString().slice(0, 10);
+
 function OrdinanceSection({ canEdit }) {
   const [search, setSearch] = useState("");
   const [ordinanceType, setOrdinanceType] = useState("");
@@ -382,7 +390,7 @@ function OrdinanceSection({ canEdit }) {
       <div className="glass card" style={{ padding: 0, overflow: "hidden" }}>
         <div style={{ padding: "16px 18px 0" }}><h3 style={{ fontSize: 16 }}>Ordinance</h3></div>
         <SectionToolbar
-          search={search} onSearchChange={setSearch} searchPlaceholder="Search names, notes…"
+          search={search} onSearchChange={setSearch} searchPlaceholder="Search names, contact, assembly, residence or notes…"
           filterValue={ordinanceType} onFilterChange={setOrdinanceType}
           filterOptions={[{ value: "", label: "All Ordinances" }, ...ORDINANCE_TYPES.map((t) => ({ value: t.key, label: t.label }))]}
           year={year} onPrevYear={() => setYear((y) => y - 1)} onNextYear={() => setYear((y) => y + 1)}
@@ -395,10 +403,11 @@ function OrdinanceSection({ canEdit }) {
           useList={useWaterBaptisms} useCreate={useCreateWaterBaptism} useDelete={useDeleteWaterBaptism}
           fields={[
             { key: "name", label: "Name", required: true },
-            { key: "baptism_date", label: "Date", type: "date", default: () => new Date().toISOString().slice(0, 10) },
-            { key: "notes", label: "Notes" },
+            { key: "baptism_date", label: "Date of Baptism", type: "date", required: true, default: todayISO },
+            { key: "assembly", label: "Assembly", type: "select", required: true, options: ASSEMBLY_OPTIONS },
+            { key: "notes", label: "Notes", type: "textarea" },
           ]}
-          columns={[["name", "Name"], ["baptism_date", "Date", fmtDate], ["notes", "Notes"]]}
+          columns={[["name", "Name"], ["baptism_date", "Date of Baptism", fmtDate], ["assembly", "Assembly", fmtAssembly], ["notes", "Notes"]]}
         />
       )}
       {showType("holy-spirit") && (
@@ -407,10 +416,11 @@ function OrdinanceSection({ canEdit }) {
           useList={useHolySpiritBaptisms} useCreate={useCreateHolySpiritBaptism} useDelete={useDeleteHolySpiritBaptism}
           fields={[
             { key: "name", label: "Name", required: true },
-            { key: "baptism_date", label: "Date", type: "date", default: () => new Date().toISOString().slice(0, 10) },
-            { key: "notes", label: "Notes" },
+            { key: "baptism_date", label: "Date of Baptism", type: "date", required: true, default: todayISO },
+            { key: "assembly", label: "Assembly", type: "select", required: true, options: ASSEMBLY_OPTIONS },
+            { key: "notes", label: "Notes", type: "textarea" },
           ]}
-          columns={[["name", "Name"], ["baptism_date", "Date", fmtDate], ["notes", "Notes"]]}
+          columns={[["name", "Name"], ["baptism_date", "Date of Baptism", fmtDate], ["assembly", "Assembly", fmtAssembly], ["notes", "Notes"]]}
         />
       )}
       {showType("souls-won") && (
@@ -420,10 +430,12 @@ function OrdinanceSection({ canEdit }) {
           fields={[
             { key: "name", label: "Name", required: true },
             { key: "contact", label: "Contact" },
-            { key: "event_date", label: "Date", type: "date", default: () => new Date().toISOString().slice(0, 10) },
-            { key: "brought_by", label: "Brought by" },
+            { key: "event_date", label: "Date", type: "date", required: true, default: todayISO },
+            { key: "assembly", label: "Assembly", type: "select", required: true, options: ASSEMBLY_OPTIONS },
+            { key: "residence", label: "Residence" },
+            { key: "notes", label: "Notes", type: "textarea" },
           ]}
-          columns={[["name", "Name"], ["contact", "Contact"], ["event_date", "Date", fmtDate], ["brought_by", "Brought by"]]}
+          columns={[["name", "Name"], ["contact", "Contact"], ["event_date", "Date", fmtDate], ["assembly", "Assembly", fmtAssembly], ["residence", "Residence"], ["notes", "Notes"]]}
         />
       )}
     </div>
@@ -442,7 +454,7 @@ function OrdinanceSubTable({ title, canEdit, useList, useCreate, useDelete, fiel
 
   const filtered = (rows ?? []).filter((r) =>
     yearOf(r[dateKey]) === year &&
-    matchesSearch(columns.map(([key]) => r[key]), search)
+    matchesSearch(columns.map(([key, , fmt]) => (fmt ? fmt(r[key]) : r[key])), search)
   );
 
   return (
@@ -487,8 +499,10 @@ function OrdinanceFormModal({ title, fields, onSave, onClose }) {
   const set = (key, val) => setValues((v) => ({ ...v, [key]: val }));
 
   const onSubmit = async () => {
+    if (saving) return; // guards against a double-click firing two inserts
     const required = fields.find((f) => f.required && !String(values[f.key] ?? "").trim());
     if (required) return setError(`${required.label} is required.`);
+    setError(null);
     setSaving(true);
     try {
       await onSave(values);
@@ -510,8 +524,17 @@ function OrdinanceFormModal({ title, fields, onSave, onClose }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {fields.map((f) => (
             <div className="field" key={f.key}>
-              <label>{f.label}</label>
-              <input type={f.type ?? "text"} className="input" value={values[f.key]} onChange={(e) => set(f.key, e.target.value)} />
+              <label>{f.label}{f.required && " *"}</label>
+              {f.type === "select" ? (
+                <select className="select" value={values[f.key]} onChange={(e) => set(f.key, e.target.value)}>
+                  <option value="">Select…</option>
+                  {f.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              ) : f.type === "textarea" ? (
+                <textarea className="textarea" rows={3} value={values[f.key]} onChange={(e) => set(f.key, e.target.value)} />
+              ) : (
+                <input type={f.type ?? "text"} className="input" value={values[f.key]} onChange={(e) => set(f.key, e.target.value)} />
+              )}
             </div>
           ))}
         </div>

@@ -58,8 +58,14 @@ export function useDeleteMinistry() {
   });
 }
 
-// Members belonging to one ministry — used by Groups/Ministries (roster)
-// and by the Ministry Leader's scoped views.
+// Members belonging to one ministry — used by Groups/Ministries (roster,
+// detailed Members-style view) and by the Ministry Leader's scoped views.
+// members(id, ...) carries the same id the Members module routes to
+// (/members/:id) — no separate "member number" field exists in the schema.
+// Only non-administrative member fields are selected here; RLS (see
+// members_select/ministry_members_select) is what actually scopes which
+// rows a Ministry Leader can see, this query just asks for what the
+// roster UI displays.
 export function useMinistryRoster(ministryId) {
   return useQuery({
     queryKey: ["ministry-roster", ministryId],
@@ -67,7 +73,8 @@ export function useMinistryRoster(ministryId) {
       const { data, error } = await supabase
         .from("ministry_members")
         .select("id, member_id, members(id, name, gender, contact, status, residence)")
-        .eq("ministry_id", ministryId);
+        .eq("ministry_id", ministryId)
+        .order("name", { referencedTable: "members" });
       if (error) throw error;
       return data ?? [];
     },

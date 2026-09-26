@@ -1,9 +1,11 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Icon } from "../../components/Icon.jsx";
 import { Modal } from "../../components/Modal.jsx";
+import { ScrollX } from "../../components/ScrollX.jsx";
 import { Avatar, Checkbox } from "../../components/primitives.jsx";
 import { useAuth } from "../../lib/auth.jsx";
-import { accessLevel } from "../../lib/rbac.js";
+import { canManageGroupRoster } from "../../lib/rbac.js";
 import {
   useMinistries, useCreateMinistry, useUpdateMinistry, useDeleteMinistry,
   useMinistryRoster, useAddMinistryMember, useRemoveMinistryMember,
@@ -11,6 +13,12 @@ import {
 } from "../../hooks/useMinistries.js";
 import { useMembers } from "../../hooks/useMembers.js";
 import { ASSEMBLY_SECTIONS, groupByAssembly } from "../../lib/assembly.js";
+
+const matchesSearch = (haystackParts, query) => {
+  if (!query) return true;
+  const hay = haystackParts.filter(Boolean).join(" ").toLowerCase();
+  return hay.includes(query.toLowerCase());
+};
 
 export function GroupsPage() {
   const { role, profile } = useAuth();
@@ -22,6 +30,10 @@ export function GroupsPage() {
 
   const activeMinistryId = isMinistryLeader ? profile?.ministry_id : selected;
   const sections = groupByAssembly(ministries);
+  // A leader with no ministry_id must never fall back to browsing
+  // everything — that's the one case the selector-hiding above doesn't
+  // cover by itself (there's simply no ministry to force-select).
+  const leaderUnassigned = isMinistryLeader && !profile?.ministry_id;
 
   return (
     <div className="fade-in">
@@ -29,7 +41,7 @@ export function GroupsPage() {
         <div>
           <div className="eyebrow" style={{ marginBottom: 6 }}>Ministries</div>
           <h1>Departments/Ministries</h1>
-          <p>{isMinistryLeader ? "Manage your ministry's roster." : "Browse ministries and their rosters, by service."}</p>
+          <p>{isMinistryLeader ? "View your ministry's roster." : "Browse ministries and their rosters, by service."}</p>
         </div>
         {canCreateMinistry && (
           <button className="btn btn-primary" onClick={() => setShowAddMinistry(true)}><Icon name="plus" size={15} /> Add ministry</button>
@@ -59,7 +71,11 @@ export function GroupsPage() {
           </div>
         )}
 
-        {activeMinistryId ? (
+        {leaderUnassigned ? (
+          <div className="glass card" style={{ padding: 40, textAlign: "center" }}>
+            <p className="muted">No ministry or department has been assigned to your account. Please contact an administrator.</p>
+          </div>
+        ) : activeMinistryId ? (
           <Roster
             ministry={ministries?.find((m) => m.id === activeMinistryId)}
             role={role}
@@ -80,19 +96,26 @@ export function GroupsPage() {
 function AssemblyBadge({ assembly }) {
   if (!assembly) return null;
   const section = ASSEMBLY_SECTIONS.find((s) => s.key === assembly);
-  return <span className={"badge " + (section?.badgeClass ?? "")}>{assembly}</span>;
+  return <span className={"badge " + (section?.badgeClass ?? "")}>{section?.label ?? assembly}</span>;
 }
 
 function Roster({ ministry, role, onDeleted }) {
-  const access = accessLevel(role, "groups");
-  const canManage = access === "full" || access === "own";
+  const navigate = useNavigate();
+  // "own" (Ministry Leader, scoped to their assigned ministry) is
+  // view-only — it must NOT imply create/update/delete. Only "full"
+  // unlocks management controls here; the matching RLS restriction lives
+  // in migration 0021 (ministry_members_write/ministry_activities_write
+  // are Super Admin only now). See rbac.js's canManageGroupRoster for the
+  // unit-tested rule this mirrors.
+  const canManage = canManageGroupRoster(role);
   const canEditMinistry = role === "super_admin"; // matches ministries_write RLS
-  const { data: roster, isLoading } = useMinistryRoster(ministry?.id);
+  const { data: roster, isLoading, isError, error } = useMinistryRoster(ministry?.id);
   const addMember = useAddMinistryMember();
   const removeMember = useRemoveMinistryMember();
   const deleteMinistry = useDeleteMinistry();
   const [showAdd, setShowAdd] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [search, setSearch] = useState("");
 
   if (!ministry) return null;
 
@@ -101,13 +124,19 @@ function Roster({ ministry, role, onDeleted }) {
     deleteMinistry.mutate(ministry.id, { onSuccess: onDeleted });
   };
 
+  const rows = roster ?? [];
+  const filtered = rows.filter((r) =>
+    matchesSearch([r.members?.name, r.members?.id, r.members?.contact, r.members?.residence, r.members?.status], search)
+  );
+  const columnCount = canManage ? 7 : 6;
+
   return (
     <>
-    <div className="glass card">
-      <div className="row between" style={{ marginBottom: 14 }}>
+    <div className="glass card" style={{ padding: 0, overflow: "hidden" }}>
+      <div className="row between" style={{ padding: "16px 18px 14px", flexWrap: "wrap", gap: 10 }}>
         <div>
           <div className="eyebrow row" style={{ gap: 8 }}>Roster <AssemblyBadge assembly={ministry.assembly} /></div>
-          <h3 style={{ fontSize: 18, marginTop: 4 }}>{ministry.name} · {(roster ?? []).length} members</h3>
+          <h3 style={{ fontSize: 18, marginTop: 4 }}>{ministry.name} · {rows.length} member{rows.length === 1 ? "" : "s"}</h3>
         </div>
         <div className="row" style={{ gap: 8 }}>
           {canEditMinistry && (
@@ -119,27 +148,80 @@ function Roster({ ministry, role, onDeleted }) {
           {canManage && <button className="btn btn-primary" onClick={() => setShowAdd(true)}><Icon name="plus" size={15} /> Add member</button>}
         </div>
       </div>
-      {isLoading && <p className="muted">Loading…</p>}
-      {(roster ?? []).map((r) => (
-        <div key={r.id} className="row between" style={{ padding: "10px 0", borderTop: "1px solid var(--line-2)" }}>
-          <div className="row" style={{ gap: 12 }}>
-            <Avatar initials={initialsOf(r.members?.name)} gold={r.members?.gender === "Female"} size={32} />
-            <span style={{ fontWeight: 500, fontSize: 14 }}>{r.members?.name}</span>
+
+      {rows.length > 0 && (
+        <div style={{ padding: "0 18px 14px" }}>
+          <div className="search" style={{ maxWidth: 380 }}>
+            <Icon name="search" size={15} />
+            <input placeholder="Search name, ID, contact, residence or status…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            {search && <button className="btn btn-icon btn-ghost" onClick={() => setSearch("")}><Icon name="x" size={14} /></button>}
           </div>
-          {canManage && (
-            <button className="btn btn-icon btn-ghost" onClick={() => removeMember.mutate({ id: r.id, ministryId: ministry.id })}>
-              <Icon name="x" size={14} />
-            </button>
-          )}
         </div>
-      ))}
-      {!isLoading && (roster ?? []).length === 0 && <p className="muted" style={{ fontSize: 13 }}>No members in this ministry yet.</p>}
+      )}
+
+      {isError && (
+        <div className="badge badge-red" style={{ display: "block", margin: "0 18px 14px", padding: "8px 12px" }}>
+          Couldn't load this roster: {error.message}
+        </div>
+      )}
+      {isLoading && <p className="muted" style={{ padding: "0 18px 18px" }}>Loading…</p>}
+      {!isLoading && !isError && rows.length === 0 && (
+        <p className="muted" style={{ padding: "0 18px 18px", fontSize: 13 }}>No members in this ministry or department yet.</p>
+      )}
+
+      {!isLoading && !isError && rows.length > 0 && (
+        <ScrollX>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Member</th>
+                <th>Member ID</th>
+                <th>Gender</th>
+                <th>Contact</th>
+                <th>Residence</th>
+                <th>Status</th>
+                {canManage && <th></th>}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 && (
+                <tr><td colSpan={columnCount} className="muted" style={{ padding: 20, textAlign: "center" }}>No members match this search.</td></tr>
+              )}
+              {filtered.map((r) => {
+                const m = r.members;
+                return (
+                  <tr key={r.id} className="row-hover" onClick={() => m?.id && navigate(`/members/${m.id}`)}>
+                    <td>
+                      <div className="row" style={{ gap: 12 }}>
+                        <Avatar initials={initialsOf(m?.name)} gold={m?.gender === "Female"} size={32} />
+                        <span style={{ fontWeight: 500, fontSize: 14 }}>{m?.name || "—"}</span>
+                      </div>
+                    </td>
+                    <td className="mono muted" style={{ fontSize: 12 }}>{m?.id ? `${m.id.slice(0, 8)}…` : "—"}</td>
+                    <td><span className="badge">{m?.gender || "—"}</span></td>
+                    <td className="mono muted" style={{ fontSize: 12.5 }}>{m?.contact || "—"}</td>
+                    <td className="muted">{m?.residence || "—"}</td>
+                    <td><span className={"badge" + (m?.status === "first-timer" ? " badge-gold" : "")}>{m?.status || "—"}</span></td>
+                    {canManage && (
+                      <td onClick={(e) => e.stopPropagation()}>
+                        <button className="btn btn-icon btn-ghost" onClick={() => removeMember.mutate({ id: r.id, ministryId: ministry.id })}>
+                          <Icon name="x" size={14} />
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </ScrollX>
+      )}
 
       {showEdit && <MinistryFormModal ministry={ministry} onClose={() => setShowEdit(false)} />}
       {showAdd && (
         <AddToRosterModal
           ministryId={ministry.id}
-          existingIds={(roster ?? []).map((r) => r.member_id)}
+          existingIds={rows.map((r) => r.member_id)}
           onAdd={(memberId) => addMember.mutate({ ministryId: ministry.id, memberId })}
           onClose={() => setShowAdd(false)}
         />

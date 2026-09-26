@@ -99,12 +99,22 @@ describe("Phase 2 RLS policies (static)", () => {
   });
 
   describe("ministry_members (Groups/Ministries roster)", () => {
-    it("write is Super Admin or the owning Ministry Leader only — not Secretary (view-only per spec)", () => {
+    // Originally Super Admin or the owning Ministry Leader; 0021 withdraws
+    // the Ministry Leader's write access (now Super Admin only — see
+    // groups_ministry_leader_readonly_rls.test.js). This checks the FINAL
+    // policy in the concatenated SQL (policyBody() takes the last match),
+    // i.e. after 0021's drop+recreate.
+    it("write is Super Admin only — Ministry Leader is read-only per 0021, Secretary/Pastor still excluded", () => {
       const body = policyBody(sql, "ministry_members_write");
       expect(body).toContain("'super_admin'");
-      expect(body).toContain("current_ministry_id()");
+      expect(body).not.toContain("'ministry_leader'");
       expect(body).not.toContain("'secretary'");
       expect(body).not.toContain("'pastor'");
+    });
+
+    it("select still scopes a Ministry Leader to their own ministry_id (unchanged by 0021)", () => {
+      const body = policyBody(sql, "ministry_members_select");
+      expect(body).toMatch(/'ministry_leader'[\s\S]*?current_ministry_id\(\)/);
     });
   });
 

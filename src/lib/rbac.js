@@ -108,6 +108,19 @@ export function canManageRoles(role) {
   return role === "super_admin" || role === "pastor";
 }
 
+// Groups/Ministries: "own" (Ministry Leader, scoped to their assigned
+// ministry_id) is VIEW-ONLY, not management access — a Ministry Leader
+// must not add/remove roster members, log/delete activities, or create/
+// edit/delete a ministry. Only "full" (Super Admin) unlocks those. This
+// is a per-module reading of "own" (Events/Messages/Reports each keep
+// their own, different interpretation of "own" — see their pages), kept
+// here as an exported helper (rather than inline in GroupsPage) so it has
+// its own unit test guarding against the regression this was written to
+// fix. The matching database-level restriction is RLS migration 0021.
+export function canManageGroupRoster(role) {
+  return accessLevel(role, "groups") === "full";
+}
+
 export const NAV_ITEMS = [
   { key: "dashboard", module: "dashboard", label: "Dashboard", icon: "dashboard", path: "/" },
   { key: "members", module: "members", label: "Members", icon: "members", path: "/members" },

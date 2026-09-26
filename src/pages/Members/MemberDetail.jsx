@@ -21,7 +21,29 @@ export function MemberDetail() {
   const { data: attendance } = useMemberAttendance(id);
 
   if (isLoading) return <div className="content" style={{ padding: 40 }}>Loading…</div>;
-  if (isError) return <div className="badge badge-red" style={{ padding: "8px 12px" }}>Couldn't load this member: {error.message}</div>;
+  if (isError) {
+    // PGRST116 = .single() got zero rows — either the id doesn't exist, or
+    // RLS silently excluded it (e.g. a Ministry Leader opening a member
+    // outside their assigned ministry). Both cases get the same generic
+    // message on purpose: distinguishing them would tell an unauthorized
+    // caller that the id *does* exist somewhere, just not to them.
+    const notFound = error?.code === "PGRST116";
+    return (
+      <div className="fade-in">
+        <div className="row" style={{ gap: 8, marginBottom: 14 }}>
+          <button className="btn btn-ghost" onClick={() => navigate("/members")}>
+            <span style={{ transform: "rotate(180deg)", display: "inline-flex" }}><Icon name="chevron" size={14} /></span>
+            Members
+          </button>
+        </div>
+        <div className="glass card" style={{ padding: 40, textAlign: "center" }}>
+          <p className="muted">
+            {notFound ? "Member not found, or you don't have access to view this record." : `Couldn't load this member: ${error.message}`}
+          </p>
+        </div>
+      </div>
+    );
+  }
   if (!member) return null;
 
   const initials = (member.name || "?").trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join("").toUpperCase();
